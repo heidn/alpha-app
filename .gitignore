@@ -1,0 +1,16 @@
+node_modules
+dist
+*.log
+*.local
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Claude: per-machine settings
+.claude/settings.local.json
