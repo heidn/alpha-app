@@ -5,7 +5,8 @@
 - Convex backend in `convex/`, one file per domain (`convex/<domain>.ts`).
 - Auth: `ClerkProvider` → `ConvexProviderWithClerk` (`src/main.tsx`). Convex env `CLERK_FRONTEND_API_URL` = Clerk Frontend API URL.
 - Users: `users` table keyed by `tokenIdentifier`; client calls `api.users.store` after sign-in (`src/features/auth/useStoreUser.ts`).
-- Auth checks: `getCurrentUser(ctx)` / `requireUser(ctx)` in `convex/users.ts`.
+- Auth checks: `getCurrentUser(ctx)` / `requireUser(ctx)` / `requireRole(ctx, ...roles)` in `convex/users.ts`.
+- Roles: `users.role` optional `admin|coach|athlete` (absent = athlete, via `roleOf`); defs in `convex/roles.ts` (no server imports, client-safe). Admin UI `src/features/admin/`; first admin via `npx convex run admin:grantAdmin`.
 - Frontend features: `src/features/<feature>/`.
 
 ## Conventions

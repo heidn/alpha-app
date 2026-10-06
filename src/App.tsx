@@ -1,5 +1,6 @@
 import { SignInButton, UserButton } from '@clerk/clerk-react'
 import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
+import { AdminGate } from './features/admin/AdminGate.tsx'
 import { CurrentUser } from './features/auth/CurrentUser.tsx'
 import { SignOutButton } from './features/auth/SignOutButton.tsx'
 
@@ -17,6 +18,7 @@ export default function App() {
         <UserButton showName />
         <SignOutButton />
         <CurrentUser />
+        <AdminGate />
       </Authenticated>
     </main>
   )
