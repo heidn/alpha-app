@@ -1,25 +1,19 @@
-import { SignInButton, UserButton } from '@clerk/clerk-react'
 import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
-import { AdminGate } from './features/admin/AdminGate.tsx'
-import { CurrentUser } from './features/auth/CurrentUser.tsx'
-import { SignOutButton } from './features/auth/SignOutButton.tsx'
+import { LoginPage } from './features/auth/LoginPage.tsx'
+import { AppShell } from './features/shell/AppShell.tsx'
 
 export default function App() {
   return (
-    <main>
-      <h1>Alpha Strength</h1>
+    <>
       <AuthLoading>
-        <p>Loading…</p>
+        <p className="visually-hidden">Loading…</p>
       </AuthLoading>
       <Unauthenticated>
-        <SignInButton mode="modal" />
+        <LoginPage />
       </Unauthenticated>
       <Authenticated>
-        <UserButton showName />
-        <SignOutButton />
-        <CurrentUser />
-        <AdminGate />
+        <AppShell />
       </Authenticated>
-    </main>
+    </>
   )
 }
