@@ -29,7 +29,6 @@ export const store = mutation({
     const fields = {
       name: identity.name ?? identity.givenName ?? identity.nickname ?? identity.email ?? 'Member',
       email: identity.email,
-      clerkId: identity.subject,
       tokenIdentifier: identity.tokenIdentifier,
     }
     const existing = await getCurrentUser(ctx)

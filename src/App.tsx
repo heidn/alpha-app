@@ -14,7 +14,7 @@ export default function App() {
         <SignInButton mode="modal" />
       </Unauthenticated>
       <Authenticated>
-        <UserButton />
+        <UserButton showName />
         <SignOutButton />
         <CurrentUser />
       </Authenticated>
