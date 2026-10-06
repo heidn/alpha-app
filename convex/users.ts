@@ -1,4 +1,5 @@
 import { mutation, query, type QueryCtx } from './_generated/server'
+import { roleOf, type Role } from './roles'
 
 export async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity()
@@ -12,6 +13,12 @@ export async function getCurrentUser(ctx: QueryCtx) {
 export async function requireUser(ctx: QueryCtx) {
   const user = await getCurrentUser(ctx)
   if (!user) throw new Error('Unauthenticated')
+  return user
+}
+
+export async function requireRole(ctx: QueryCtx, ...allowed: Role[]) {
+  const user = await requireUser(ctx)
+  if (!allowed.includes(roleOf(user))) throw new Error('Forbidden')
   return user
 }
 
