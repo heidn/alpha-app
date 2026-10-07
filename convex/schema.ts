@@ -4,13 +4,10 @@ import {
   bookingStatusV,
   distanceUnitV,
   genderV,
-  maxSourceV,
+  recordedMaxV,
   memberSetV,
-  plateIncrementV,
   programV,
-  rxWeightsV,
   scoreFieldV,
-  scoreKindV,
   sortV,
   weightUnitV,
 } from './domain'
@@ -28,10 +25,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     // Decides which Rx weight/distance the member sees.
     gender: v.optional(genderV),
-    // Athlete app settings. Absent = defaults: rxWeights from gender, lb, 5 lb plates.
-    rxWeights: v.optional(rxWeightsV),
-    units: v.optional(weightUnitV),
-    plateIncrement: v.optional(plateIncrementV),
+    // Coach-tested / imported 1RMs, one per exercise. Changes rarely, so it's fine on this widely-read doc.
+    maxes: v.optional(v.array(recordedMaxV)),
   })
     .index('by_tokenIdentifier', ['tokenIdentifier'])
     .index('by_email', ['email'])
@@ -73,6 +68,17 @@ export default defineSchema({
   })
     .index('by_class_user', ['classId', 'userId'])
     .index('by_user', ['userId']),
+
+  // A member's spot in one class on one date; signedIn = attended. One per member per date.
+  // Own table: per-day rows would grow without bound on users, and check-ins are hot writes.
+  bookings: defineTable({
+    userId: v.id('users'),
+    classId: v.id('classes'),
+    date: v.string(), // "2026-10-07", gym local time
+    status: bookingStatusV,
+  })
+    .index('by_user_date', ['userId', 'date'])
+    .index('by_class_date', ['classId', 'date']),
 
   // Invite for someone without an account; claimed in users.store on sign-in.
   classInvites: defineTable({
@@ -116,21 +122,7 @@ export default defineSchema({
     fields: v.array(scoreFieldV),
     perSet: v.boolean(), // true = one input row per set
     sort: sortV, // leaderboard order of memberLogs.sortValue
-    kind: v.optional(scoreKindV),
   }).index('by_name', ['name']),
-
-  // A member's spot in one class on one date (class session = classId + date). signedIn = attended.
-  // One per member per date: booking another class moves it.
-  bookings: defineTable({
-    userId: v.id('users'),
-    classId: v.id('classes'),
-    gymId: v.id('gyms'),
-    date: v.string(), // "2026-10-07", gym local time
-    status: bookingStatusV,
-    signedInAt: v.optional(v.number()),
-  })
-    .index('by_user_date', ['userId', 'date'])
-    .index('by_class_date', ['classId', 'date']),
 
   // One day of one class. Program is embedded: bounded, always read/written as a unit.
   workouts: defineTable({
@@ -161,16 +153,4 @@ export default defineSchema({
     .index('by_workout_item_score', ['workoutId', 'itemKey', 'sortValue'])
     .index('by_user_workout', ['userId', 'workoutId'])
     .index('by_user_exercise', ['userId', 'exerciseId']),
-
-  // Actual 1RMs. Members never type these: rows come from logged singles (same mutation as the
-  // memberLog), a coach-run test, or an import. Projected maxes are computed from memberLogs, not stored.
-  oneRepMaxes: defineTable({
-    userId: v.id('users'),
-    exerciseId: v.id('exercises'),
-    weight: v.number(),
-    unit: weightUnitV,
-    achievedAt: v.string(), // workout date, "2026-05-12"
-    source: maxSourceV,
-    memberLogId: v.optional(v.id('memberLogs')), // when source = logged
-  }).index('by_user_exercise_weight', ['userId', 'exerciseId', 'weight']),
 })
