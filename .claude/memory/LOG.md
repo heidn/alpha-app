@@ -8,3 +8,4 @@
 2026-10-07 heidnick | domain schema: gyms, gymMembers, classes, classMembers, classInvites, sections, exercises, scoreTypes, workouts (embedded program), memberLogs (embedded sets); seed:scoreTypes | embedded per Convex guidance (bounded, read/written as unit); don't remove a program item key that has memberLogs
 2026-10-07 heidnick | gyms backend + Gyms/Gym pages (staff, members); typed hash router; shared ui/ (ui.module.css, ErrorBanner, useRun) | gym staff = gymMembers.staff, not just coach role; get queries take string ids + normalizeId
 2026-10-07 heidnick | classes + classMembers (roster, one-time email invite, remove), invite claim in users.store, Classes tab + Class page | invite claim needs `email` claim in Clerk session token (same gap as name); emails stored lowercased
+2026-10-07 heidnick | @clerk/clerk-react 5 → @clerk/react 6.17.3 (Core 3) | package renamed; SignedIn/SignedOut → <Show when>, getToken can throw ClerkOfflineError; we use neither

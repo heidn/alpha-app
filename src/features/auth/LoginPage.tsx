@@ -1,4 +1,4 @@
-import { SignInButton, SignUpButton } from '@clerk/clerk-react'
+import { SignInButton, SignUpButton } from '@clerk/react'
 import styles from './LoginPage.module.css'
 
 const FEATURES = [

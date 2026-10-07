@@ -1,4 +1,4 @@
-import { UserButton } from '@clerk/clerk-react'
+import { UserButton } from '@clerk/react'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { AdminPage } from '../admin/AdminPage.tsx'
