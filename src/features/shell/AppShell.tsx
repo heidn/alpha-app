@@ -7,6 +7,9 @@ import { ClassPage } from '../classes/ClassPage.tsx'
 import { GymPage } from '../gyms/GymPage.tsx'
 import { GymsPage } from '../gyms/GymsPage.tsx'
 import { HomePage } from '../home/HomePage.tsx'
+import { LibraryPage } from '../library/LibraryPage.tsx'
+import { WorkoutEditorPage } from '../workouts/WorkoutEditorPage.tsx'
+import { WorkoutsPage } from '../workouts/WorkoutsPage.tsx'
 import styles from './AppShell.module.css'
 import { hrefFor, useRoute, type Route } from './useRoute.ts'
 
@@ -32,6 +35,8 @@ export function AppShell() {
   const links: { route: Route; label: string; show: boolean }[] = [
     { route: { name: 'home' }, label: 'Home', show: true },
     { route: { name: 'gyms' }, label: 'Gyms', show: isStaff },
+    { route: { name: 'workouts' }, label: 'Workouts', show: isStaff },
+    { route: { name: 'library' }, label: 'Library', show: isStaff },
     { route: { name: 'admin' }, label: 'Users', show: isAdmin },
   ]
   const forbidden = <p className={styles.forbidden}>You don’t have access to this page.</p>
@@ -79,6 +84,12 @@ export function AppShell() {
           <GymPage id={route.id} isAdmin={isAdmin} />
         ) : route.name === 'class' ? (
           <ClassPage id={route.id} />
+        ) : route.name === 'library' ? (
+          <LibraryPage isAdmin={isAdmin} />
+        ) : route.name === 'workouts' ? (
+          <WorkoutsPage />
+        ) : route.name === 'workout' ? (
+          <WorkoutEditorPage id={route.id} />
         ) : null}
       </main>
     </div>

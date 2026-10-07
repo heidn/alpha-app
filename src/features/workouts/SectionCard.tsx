@@ -1,0 +1,155 @@
+import type { ProgramSection } from '../../../convex/domain'
+import ui from '../ui/ui.module.css'
+import { ExercisePicker } from './ExercisePicker.tsx'
+import { PrescriptionTable } from './PrescriptionTable.tsx'
+import { emptyPrescription, move, newKey, removeAt, replaceAt } from './program.ts'
+import { ScoreControl, type ScoreTypeOption } from './ScoreControl.tsx'
+import styles from './WorkoutEditor.module.css'
+
+type Props = {
+  section: ProgramSection
+  index: number
+  count: number
+  title: string
+  names: Record<string, string>
+  scoreTypes: ScoreTypeOption[]
+  logged: Set<string>
+  onChange: (s: ProgramSection) => void
+  onMove: (delta: -1 | 1) => void
+  onRemove: () => void
+  onName: (id: string, name: string) => void
+  onError: (msg: string) => void
+}
+
+const hasLogs = (s: ProgramSection, logged: Set<string>) =>
+  logged.has(s.key) || s.exercises.some((e) => logged.has(e.key))
+
+export function SectionCard(p: Props) {
+  const { section: s, logged } = p
+  const scored = !!s.score || s.exercises.some((e) => e.score)
+  const setExercises = (exercises: ProgramSection['exercises']) => p.onChange({ ...s, exercises })
+  const lockedTitle = 'Members have logged results here'
+
+  return (
+    <article className={styles.section} data-scored={scored || undefined}>
+      <header className={styles.sectionHead}>
+        <h3>{p.title}</h3>
+        {!scored && <span className={ui.pill}>Display only</span>}
+        <div className={styles.tools}>
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnSmall}`}
+            aria-label="Move section up"
+            disabled={p.index === 0}
+            onClick={() => p.onMove(-1)}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnSmall}`}
+            aria-label="Move section down"
+            disabled={p.index === p.count - 1}
+            onClick={() => p.onMove(1)}
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            className={`${ui.btnDanger} ${ui.btnSmall}`}
+            disabled={hasLogs(s, logged)}
+            title={hasLogs(s, logged) ? lockedTitle : undefined}
+            onClick={p.onRemove}
+          >
+            Remove
+          </button>
+        </div>
+      </header>
+
+      <label className={ui.field}>
+        <span className="visually-hidden">Section notes</span>
+        <textarea
+          rows={2}
+          placeholder="Notes (e.g. 21-15-9 for time, 12 min cap)"
+          value={s.notes ?? ''}
+          onChange={(e) => p.onChange({ ...s, notes: e.target.value || undefined })}
+        />
+      </label>
+
+      <ScoreControl
+        score={s.score}
+        scoreTypes={p.scoreTypes}
+        defaultTitle={p.title}
+        locked={logged.has(s.key)}
+        onChange={(score) => p.onChange({ ...s, score })}
+      />
+
+      <ol className={styles.exercises}>
+        {s.exercises.map((e, i) => {
+          const name = p.names[e.exerciseId] ?? 'Exercise'
+          return (
+            <li key={e.key} className={styles.exercise}>
+              <div className={styles.sectionHead}>
+                <strong>{name}</strong>
+                <div className={styles.tools}>
+                  <button
+                    type="button"
+                    className={`${ui.btn} ${ui.btnSmall}`}
+                    aria-label={`Move ${name} up`}
+                    disabled={i === 0}
+                    onClick={() => setExercises(move(s.exercises, i, -1))}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className={`${ui.btn} ${ui.btnSmall}`}
+                    aria-label={`Move ${name} down`}
+                    disabled={i === s.exercises.length - 1}
+                    onClick={() => setExercises(move(s.exercises, i, 1))}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className={`${ui.btnDanger} ${ui.btnSmall}`}
+                    aria-label={`Remove ${name}`}
+                    disabled={logged.has(e.key)}
+                    title={logged.has(e.key) ? lockedTitle : undefined}
+                    onClick={() => setExercises(removeAt(s.exercises, i))}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <PrescriptionTable
+                rows={e.prescriptions}
+                onChange={(prescriptions) =>
+                  setExercises(replaceAt(s.exercises, i, { ...e, prescriptions }))
+                }
+              />
+              <ScoreControl
+                score={e.score}
+                scoreTypes={p.scoreTypes}
+                defaultTitle={name}
+                locked={logged.has(e.key)}
+                onChange={(score) => setExercises(replaceAt(s.exercises, i, { ...e, score }))}
+              />
+            </li>
+          )
+        })}
+      </ol>
+
+      <ExercisePicker
+        onError={p.onError}
+        onPick={(exerciseId, name) => {
+          p.onName(exerciseId, name)
+          setExercises([
+            ...s.exercises,
+            { key: newKey(), exerciseId, prescriptions: [emptyPrescription()] },
+          ])
+        }}
+      />
+    </article>
+  )
+}

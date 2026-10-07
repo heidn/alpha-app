@@ -9,3 +9,5 @@
 2026-10-07 heidnick | gyms backend + Gyms/Gym pages (staff, members); typed hash router; shared ui/ (ui.module.css, ErrorBanner, useRun) | gym staff = gymMembers.staff, not just coach role; get queries take string ids + normalizeId
 2026-10-07 heidnick | classes + classMembers (roster, one-time email invite, remove), invite claim in users.store, Classes tab + Class page | invite claim needs `email` claim in Clerk session token (same gap as name); emails stored lowercased
 2026-10-07 heidnick | @clerk/clerk-react 5 → @clerk/react 6.17.3 (Core 3) | package renamed; SignedIn/SignedOut → <Show when>, getToken can throw ClerkOfflineError; we use neither
+2026-10-07 heidnick | library: sections/exercises (staff add, admin edit, exercise search index), score types (admin) + Library page | no deletes for library rows: workout programs reference them by id
+2026-10-07 heidnick | workouts: week view, editor (sections/exercises/prescriptions/scoring, single save), myDay query; test admin fixture | save rejects removing/re-scoring logged items; smoke-test via `npx convex run --identity '{"tokenIdentifier":"test|coach1@test.local",...}'`

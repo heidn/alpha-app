@@ -14,9 +14,11 @@ import type * as classMembers from "../classMembers.js";
 import type * as classes from "../classes.js";
 import type * as domain from "../domain.js";
 import type * as gyms from "../gyms.js";
+import type * as library from "../library.js";
 import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
+import type * as workouts from "../workouts.js";
 
 import type {
   ApiFromModules,
@@ -31,9 +33,11 @@ declare const fullApi: ApiFromModules<{
   classes: typeof classes;
   domain: typeof domain;
   gyms: typeof gyms;
+  library: typeof library;
   roles: typeof roles;
   seed: typeof seed;
   users: typeof users;
+  workouts: typeof workouts;
 }>;
 
 /**
