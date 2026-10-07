@@ -9,7 +9,7 @@
 - Roles: `users.role` optional `admin|coach|athlete` (absent = athlete, via `roleOf`); defs in `convex/roles.ts` (no server imports, client-safe). Admin UI `src/features/admin/`; first admin via `npx convex run admin:grantAdmin`. Admin invites (`convex/invites.ts`): role held in `userInvites`, claimed in `users.store` if email verified.
 - Frontend features: `src/features/<feature>/`. UI conventions: `.claude/skills/react-ux` skill (load before UI work).
 - Routing: tiny hash router `src/features/shell/useRoute.ts` (no dep). Styling: tokens in `src/index.css` + colocated CSS Modules.
-- Shell: `App` -> LoginPage (unauth) | AppShell (nav + UserButton, routes home/admin).
+- Shell: `App` -> LoginPage (unauth) | AppShell (nav + UserButton, routes home/admin). AppShell shows OnboardingPage (first/last name + gender, `users.completeProfile`) until `users.gender` set.
 
 ## Domain model (`convex/schema.ts`, validators in `convex/domain.ts`)
 - Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.

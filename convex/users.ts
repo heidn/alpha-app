@@ -1,6 +1,7 @@
-import { ConvexError, type JSONValue } from 'convex/values'
+import { ConvexError, v, type JSONValue } from 'convex/values'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { claimInvites, normalizeEmail } from './classMembers'
+import { genderV } from './domain'
 import { claimRoleInvite } from './invites'
 import { roleOf, type Role } from './roles'
 
@@ -41,8 +42,10 @@ export const store = mutation({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error('Unauthenticated')
-    const firstName = claim(identity.first_name)
-    const lastName = claim(identity.last_name)
+    const existing = await getCurrentUser(ctx)
+    // Names are user-owned once set (onboarding); Clerk claims only fill gaps.
+    const firstName = existing?.firstName ?? claim(identity.first_name)
+    const lastName = existing?.lastName ?? claim(identity.last_name)
     const fields = {
       name: [firstName, lastName].filter(Boolean).join(' ') || identity.name || identity.email || 'Member',
       email: identity.email && normalizeEmail(identity.email),
@@ -50,7 +53,6 @@ export const store = mutation({
       lastName,
       tokenIdentifier: identity.tokenIdentifier,
     }
-    const existing = await getCurrentUser(ctx)
     const userId = existing?._id ?? (await ctx.db.insert('users', fields))
     if (
       existing &&
@@ -67,5 +69,30 @@ export const store = mutation({
     const verified = identity.emailVerified === true || identity.email_verified === 'true'
     if (fields.email && verified) await claimRoleInvite(ctx, userId, fields.email)
     return userId
+  },
+})
+
+const MAX_NAME = 50
+
+function cleanName(value: string, label: string) {
+  const trimmed = value.trim()
+  if (!trimmed) throw new ConvexError(`${label} is required.`)
+  if (trimmed.length > MAX_NAME) throw new ConvexError(`${label} must be ${MAX_NAME} characters or fewer.`)
+  return trimmed
+}
+
+// Onboarding: required profile fields the client collects after first sign-in.
+export const completeProfile = mutation({
+  args: { firstName: v.string(), lastName: v.string(), gender: genderV },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const next = {
+      firstName: cleanName(args.firstName, 'First name'),
+      lastName: cleanName(args.lastName, 'Last name'),
+      gender: args.gender,
+    }
+    const name = `${next.firstName} ${next.lastName}`
+    if (user.firstName === next.firstName && user.lastName === next.lastName && user.gender === next.gender) return
+    await ctx.db.patch(user._id, { ...next, name })
   },
 })
