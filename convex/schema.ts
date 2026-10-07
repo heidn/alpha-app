@@ -74,6 +74,21 @@ export default defineSchema({
     .index('by_email', ['email'])
     .index('by_class_email', ['classId', 'email']),
 
+  // Admin invite: Convex owns the role; Clerk only delivers the email. Claimed in users.store.
+  userInvites: defineTable({
+    email: v.string(), // lowercased
+    role: roleValidator,
+    invitedBy: v.id('users'),
+    status: v.union(
+      v.literal('sending'),
+      v.literal('sent'),
+      v.literal('hasAccount'), // already in Clerk; role applies on next sign-in
+      v.literal('failed'),
+    ),
+    clerkInvitationId: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }).index('by_email', ['email']),
+
   sections: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
