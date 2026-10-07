@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router'
-import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useRef } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+import { ScrollView } from 'react-native-gesture-handler'
 import { longDate } from '../../src/data/dates'
 import { percentOf, projectedAtPercent } from '../../src/data/rules'
 import { useStore } from '../../src/data/store'
@@ -14,7 +15,7 @@ export default function PersonalRecordScreen() {
   const { movementId } = useLocalSearchParams<{ movementId: string }>()
   const store = useStore()
   const top = useTopInset()
-  const [scrollEnabled, setScrollEnabled] = useState(true)
+  const scrollRef = useRef<ScrollView>(null)
   const { today } = store
   // Today's programmed percent for this lift, if it's on today's workout.
   const todayLift = store.workoutOn(today)?.lift
@@ -25,7 +26,7 @@ export default function PersonalRecordScreen() {
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'))
 
   return (
-    <ScrollView scrollEnabled={scrollEnabled} style={{ backgroundColor: color.bg }} contentContainerStyle={[styles.page, { paddingTop: top + 20 }]}>
+    <ScrollView ref={scrollRef} style={{ backgroundColor: color.bg }} contentContainerStyle={[styles.page, { paddingTop: top + 20 }]}>
       <IconButton label="Back" onPress={back} style={{ marginLeft: -12 }}>
         <ChevronLeft size={20} />
       </IconButton>
@@ -68,7 +69,7 @@ export default function PersonalRecordScreen() {
           weightAt={(pct) => percentOf(tm.weight, pct, step)}
           projectedAt={(pct) => projectedAtPercent(stats.projected ?? tm.weight, pct, step)}
           lastAt={stats.lastAt}
-          onDragChange={(d) => setScrollEnabled(!d)}
+          scrollRef={scrollRef}
         />
       ) : (
         <Text style={[type.body, { color: color.muted, marginTop: 14 }]}>Log a few sets to see your percentages.</Text>

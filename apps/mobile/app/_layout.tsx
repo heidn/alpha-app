@@ -6,6 +6,7 @@ import { useConvexAuth } from 'convex/react'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { View } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProviders } from '../src/auth/AuthProviders'
 import { useStoreUser } from '../src/auth/useStoreUser'
@@ -32,14 +33,16 @@ export default function RootLayout() {
   if (!loaded) return <View style={{ flex: 1, backgroundColor: color.bg }} />
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <AuthProviders>
-        <StoreProvider>
-          <RootStack />
-        </StoreProvider>
-      </AuthProviders>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <AuthProviders>
+          <StoreProvider>
+            <RootStack />
+          </StoreProvider>
+        </AuthProviders>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
 
