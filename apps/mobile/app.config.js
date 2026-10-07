@@ -23,8 +23,6 @@ module.exports = ({ config }) => {
       ...config.extra,
       clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? root.VITE_CLERK_PUBLISHABLE_KEY,
       convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL ?? root.VITE_CONVEX_URL,
-      // Where the Menu's web-app links go. Defaults to the local Vite dev server.
-      webUrl: process.env.WEB_APP_URL ?? 'http://localhost:5173',
     },
   }
 }
