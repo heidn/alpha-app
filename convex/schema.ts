@@ -25,7 +25,8 @@ export default defineSchema({
     gender: v.optional(genderV),
   })
     .index('by_tokenIdentifier', ['tokenIdentifier'])
-    .index('by_email', ['email']),
+    .index('by_email', ['email'])
+    .index('by_role', ['role']),
 
   gyms: defineTable({
     name: v.string(),
@@ -36,8 +37,11 @@ export default defineSchema({
   gymMembers: defineTable({
     gymId: v.id('gyms'),
     userId: v.id('users'),
+    // true = gym staff (coach powers here); absent = athlete via a class.
+    staff: v.optional(v.boolean()),
   })
     .index('by_gym_user', ['gymId', 'userId'])
+    .index('by_gym_staff', ['gymId', 'staff'])
     .index('by_user', ['userId']),
 
   // Recurring class, e.g. "6 AM" Mon–Fri. Members join once and see its daily workout.

@@ -1,5 +1,6 @@
 import { ConvexError } from 'convex/values'
 import { mutation, query, type QueryCtx } from './_generated/server'
+import { claimInvites, normalizeEmail } from './classMembers'
 import { roleOf, type Role } from './roles'
 
 export async function getCurrentUser(ctx: QueryCtx) {
@@ -36,14 +37,16 @@ export const store = mutation({
     if (!identity) throw new Error('Unauthenticated')
     const fields = {
       name: identity.name ?? identity.givenName ?? identity.nickname ?? identity.email ?? 'Member',
-      email: identity.email,
+      email: identity.email && normalizeEmail(identity.email),
       tokenIdentifier: identity.tokenIdentifier,
     }
     const existing = await getCurrentUser(ctx)
-    if (!existing) return await ctx.db.insert('users', fields)
-    if (existing.name !== fields.name || existing.email !== fields.email) {
+    const userId = existing?._id ?? (await ctx.db.insert('users', fields))
+    if (existing && (existing.name !== fields.name || existing.email !== fields.email)) {
       await ctx.db.patch(existing._id, { name: fields.name, email: fields.email })
     }
-    return existing._id
+    // Class invites wait for this email; claim them in the same transaction.
+    if (fields.email) await claimInvites(ctx, userId, fields.email)
+    return userId
   },
 })

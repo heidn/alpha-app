@@ -4,7 +4,7 @@ import type { QueryCtx } from './_generated/server'
 import { roleOf } from './roles'
 import { requireRole } from './users'
 
-// Admin, or a coach who belongs to the gym.
+// Admin, or a coach who is staff at the gym.
 export async function requireGymStaff(ctx: QueryCtx, gymId: Id<'gyms'>) {
   const user = await requireRole(ctx, 'admin', 'coach')
   if (roleOf(user) === 'admin') return user
@@ -12,7 +12,7 @@ export async function requireGymStaff(ctx: QueryCtx, gymId: Id<'gyms'>) {
     .query('gymMembers')
     .withIndex('by_gym_user', (q) => q.eq('gymId', gymId).eq('userId', user._id))
     .unique()
-  if (!member) throw new ConvexError('Forbidden')
+  if (!member?.staff) throw new ConvexError('Forbidden')
   return user
 }
 

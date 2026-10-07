@@ -10,7 +10,10 @@
 
 import type * as access from "../access.js";
 import type * as admin from "../admin.js";
+import type * as classMembers from "../classMembers.js";
+import type * as classes from "../classes.js";
 import type * as domain from "../domain.js";
+import type * as gyms from "../gyms.js";
 import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
@@ -24,7 +27,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   access: typeof access;
   admin: typeof admin;
+  classMembers: typeof classMembers;
+  classes: typeof classes;
   domain: typeof domain;
+  gyms: typeof gyms;
   roles: typeof roles;
   seed: typeof seed;
   users: typeof users;
