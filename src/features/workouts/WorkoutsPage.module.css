@@ -1,0 +1,50 @@
+.week {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-4);
+  list-style: none;
+}
+
+.day {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  min-height: 96px;
+  padding: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.day[data-off] {
+  background: var(--surface-2);
+}
+
+.day[data-today] {
+  border-color: var(--accent);
+}
+
+.dayHead {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.workout {
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.workout:hover {
+  color: var(--accent);
+}
+
+.weekNav {
+  display: flex;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-4) var(--s-4);
+}

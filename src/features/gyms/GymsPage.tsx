@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { api } from '../../../convex/_generated/api'
-import { hrefFor } from '../shell/useRoute.ts'
+import { hrefFor, navigate } from '../shell/useRoute.ts'
 import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
@@ -15,7 +15,7 @@ export function GymsPage({ isAdmin }: { isAdmin: boolean }) {
 
   const onCreate = async (values: GymValues) => {
     const r = await run(() => create(values))
-    if (r.ok) window.location.hash = hrefFor({ name: 'gym', id: r.value })
+    if (r.ok) navigate({ name: 'gym', id: r.value })
   }
 
   return (

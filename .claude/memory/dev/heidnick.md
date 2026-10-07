@@ -1,5 +1,5 @@
 # heidnick
-- Current: wod-* PR series (plan: ~/.claude/plans/vivid-cuddling-squid.md). Worktree ../alpha-app-wod. PR1 heidnick/wod-schema done; next wod-gyms (router params, gyms.ts, Gyms pages).
-- Worktree has no .env.local (deny rule blocks copy): run `npx convex dev --once` from a checkout with env.
-- "Signed in as Member": Convex identity lacks name/email; add claims in Clerk session token (Customize session token).
-- @clerk/clerk-react deprecated → @clerk/react (major); needs its own chore/deps PR.
+- Branches (stacked, unmerged): wod-schema → wod-gyms → wod-classes → wod-library → wod-workouts; chore/deps-clerk off main. Merge order: clerk, then wod-* in order.
+- New-branch pushes returned GitHub 500 on 2026-10-07; retry. Merging to main needs human (auto-mode blocks).
+- Not visually checked in browser (needs Clerk sign-in). Check light/dark + 360px.
+- Convex identity lacks name/email: add claims in Clerk session token — required for invite claim.

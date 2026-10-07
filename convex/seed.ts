@@ -4,6 +4,7 @@ import type { Role } from './roles'
 
 // Dev-only fixtures. Fake tokenIdentifiers can never match a real Clerk login.
 const TEST_USERS: { name: string; email: string; role: Role }[] = [
+  { name: 'Ada Admin', email: 'admin1@test.local', role: 'admin' },
   { name: 'Casey Coach', email: 'coach1@test.local', role: 'coach' },
   { name: 'Avery Athlete', email: 'athlete1@test.local', role: 'athlete' },
   { name: 'Blake Athlete', email: 'athlete2@test.local', role: 'athlete' },

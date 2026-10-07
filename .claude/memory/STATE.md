@@ -14,11 +14,12 @@
 ## Domain model (`convex/schema.ts`, validators in `convex/domain.ts`)
 - Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.
 - `workouts` (one per class+date) embed `program`: sections→exercises→prescriptions, order = array order, items have stable client `key`; `score` present = scored item.
-- `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts`.
+- `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts` (gym staff = `gymMembers.staff`).
+- Client: routes `#/gyms[/:id]`, `#/classes/:id`, `#/library`, `#/workouts[/:id]`; shared `src/features/ui/` (ui.module.css, ErrorBanner, useRun).
 
 ## Conventions
 - See CLAUDE.md. Each dev has own Convex dev deployment.
 
 ## Open decisions
 - Test runner (none yet). CI.
-- Domain screens (gyms, classes, library, workout editor) in progress: plan PRs wod-schema→gyms→classes→library→workouts.
+- Athlete-facing UI (today's WOD via `workouts.myDay`, result logging/leaderboard) not built; memberLogs mutations TBD.

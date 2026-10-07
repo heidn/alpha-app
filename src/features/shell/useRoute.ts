@@ -40,6 +40,10 @@ export const hrefFor = (route: Route): string => {
   }
 }
 
+export const navigate = (route: Route) => {
+  window.location.hash = hrefFor(route)
+}
+
 // Snapshot must be stable between renders, so subscribe to the hash string and parse after.
 export function useRoute(): Route {
   return parse(useSyncExternalStore(subscribe, () => window.location.hash))

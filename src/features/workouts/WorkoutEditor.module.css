@@ -1,0 +1,148 @@
+.section {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.section[data-scored] {
+  border-left-color: var(--accent);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.sectionHead h3 {
+  font-size: 1.1rem;
+}
+
+.tools {
+  display: flex;
+  gap: var(--s-1);
+  margin-left: auto;
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.score select,
+.score input:not([type='checkbox']) {
+  width: auto;
+  min-width: 160px;
+}
+
+.exercises {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exercise {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.rxWrap {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+  overflow-x: auto;
+}
+
+.rx {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.rx th {
+  padding: 0 var(--s-1);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rx td {
+  padding: 2px;
+}
+
+.rx input,
+.rx select {
+  padding: var(--s-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.rx input[type='number'] {
+  width: 64px;
+}
+
+.rx td:has(select) {
+  white-space: nowrap;
+}
+
+.note {
+  width: 160px;
+}
+
+.picker {
+  position: relative;
+  max-width: 360px;
+}
+
+.results {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  margin: var(--s-1) 0 0;
+  padding: var(--s-1);
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+}
+
+.results button {
+  width: 100%;
+  padding: var(--s-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.results button:hover,
+.results button:focus-visible {
+  background: var(--surface-2);
+}
+
+.addSection {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: var(--s-4);
+}

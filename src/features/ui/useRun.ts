@@ -23,5 +23,5 @@ export function useRun() {
 
   const clearError = useCallback(() => setError(null), [])
 
-  return { run, pending, error, clearError }
+  return { run, pending, error, clearError, setError }
 }
