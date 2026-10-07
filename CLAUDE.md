@@ -29,6 +29,8 @@ Dev id = `$CLAUDE_DEV` or `git config user.name`.
 - Every function has `args` validators (`v.*`) and, for queries/mutations on user data, an auth check (`requireUser(ctx)` / `getCurrentUser(ctx)` from `convex/users.ts`).
 - Use `withIndex`, never `.filter()` on large tables; no unbounded `.collect()` (use `.take(n)`/pagination).
 - Mutations are transactional: keep them small; call external APIs only from `action`s.
+- Multi-step/related writes go in ONE mutation (one transaction, all-or-nothing). Never split them across several client `useMutation` calls or multiple `ctx.runMutation` calls in an action (each is its own transaction). Shared write logic = plain helper functions taking `ctx`, called inside the mutation.
+- Caching (queries are cached + invalidated by read set): queries must be deterministic (no `Date.now()`/`Math.random()`; pass time as a rounded arg); read only what's needed via indexes; return projected fields, not whole docs; skip no-op writes (compare before `patch`); keep hot-changing fields in separate docs/tables from widely-read ones; stable args (no new objects/timestamps each render); one `useQuery` per data need, pass results via props; `"skip"` when args aren't ready.
 - Use `internalQuery/Mutation/Action` for anything not called by the client.
 - Client: `useQuery`/`useMutation` from `convex/react`; handle `undefined` (loading) state.
 **Clerk + Convex auth**
