@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react'
-import { Animated, Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native'
+import { Animated, Easing, Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native'
 import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler'
 import { color, font } from '../theme'
 import { haptic } from './hooks'
@@ -16,6 +16,7 @@ const CARD_H = ROW_H + CARD_PAD * 2
 const LAST = PERCENTS.length - 1
 
 const cardTop = (i: number) => i * STRIDE - CARD_PAD
+const EASE_OUT = Easing.out(Easing.cubic)
 const clampIndex = (i: number) => Math.min(Math.max(i, 0), LAST)
 
 /** Grain density scales with percentage: 0.1 at 40%, 1 at 100% (from the design). */
@@ -46,7 +47,6 @@ export function PercentTable({ weightAt, projectedAt, lastAt, todayPct, scrollRe
   const dragStartRef = useRef(0)
   const activeRef = useRef(false)
   const [cardY] = useState(() => new Animated.Value(cardTop(initial)))
-  const [stretch] = useState(() => new Animated.Value(1))
   const [fade] = useState(() => new Animated.Value(1))
   const [slide] = useState(() => new Animated.Value(0))
 
@@ -63,20 +63,17 @@ export function PercentTable({ weightAt, projectedAt, lastAt, todayPct, scrollRe
       slide.setValue(dir * 8)
       Animated.parallel([
         Animated.timing(fade, { toValue: 1, duration: 160, useNativeDriver: false }),
-        Animated.spring(slide, { toValue: 0, friction: 7, tension: 180, useNativeDriver: false }),
+        Animated.timing(slide, { toValue: 0, duration: 160, easing: EASE_OUT, useNativeDriver: false }),
       ]).start()
     }
     const snap = (i: number) =>
-      Animated.parallel([
-        Animated.spring(cardY, { toValue: cardTop(i), friction: 7, tension: 160, useNativeDriver: false }),
-        Animated.spring(stretch, { toValue: 1, friction: 5, useNativeDriver: false }),
-      ]).start()
+      Animated.timing(cardY, { toValue: cardTop(i), duration: 200, easing: EASE_OUT, useNativeDriver: false }).start()
 
-    const follow = ({ translationY, velocityY }: { translationY: number; velocityY: number }) => {
+    const follow = ({ translationY }: { translationY: number }) => {
+      // Only a drag that actually started moves the card (a plain tap must never reposition it).
+      if (!activeRef.current) return
       const y = Math.min(Math.max(dragStartRef.current + translationY, cardTop(0)), cardTop(LAST))
       cardY.setValue(y)
-      // Liquid feel: stretch a little along the motion, proportional to speed (px/s).
-      stretch.setValue(1 + Math.min((Math.abs(velocityY) / 1000) * 0.08, 0.14))
       show(clampIndex(Math.round((y + CARD_PAD) / STRIDE)))
     }
     const gesture = Gesture.Pan()
@@ -152,7 +149,7 @@ export function PercentTable({ weightAt, projectedAt, lastAt, todayPct, scrollRe
           accessibilityHint="Swipe up or down to change percentage, or drag to slide."
           accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={onA11yAction}
-          style={[styles.card, { transform: [{ translateY: cardY }, { scaleY: stretch }] }]}
+          style={[styles.card, { transform: [{ translateY: cardY }] }]}
         >
           <Animated.View style={[styles.cardContent, { opacity: fade, transform: [{ translateY: slide }] }]}>
             <View style={styles.rowLeft}>
