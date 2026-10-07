@@ -1,7 +1,8 @@
 import { isClerkAPIResponseError, useSignIn, useSignUp } from '@clerk/expo'
 import { useState } from 'react'
 import { Platform, useWindowDimensions, View } from 'react-native'
-import { Button, Field, Layout, Screen, Text } from '../ui'
+import { Button, Field, Layout, Text } from '../ui'
+import { Screen } from '../shell/Screen'
 
 // Custom flow on Clerk's Core 3 sign-in/sign-up resources. Adapts to whatever factors the
 // Clerk app has enabled: email code preferred, password if that's what's available.

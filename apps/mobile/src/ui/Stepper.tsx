@@ -1,4 +1,5 @@
 import { Pressable } from 'react-native'
+import { Card } from './Card'
 import { cx } from './cx'
 import { haptic } from './hooks'
 import { Minus, Plus } from './icons'
@@ -50,13 +51,13 @@ export function Stepper({ value, onDown, onUp, name, variant = 'card', label, un
     )
   }
   return (
-    <Layout gap={2} className={cx('flex-1 p-3.5 border border-line rounded-xl', className)}>
+    <Card className={cx('flex-1 gap-2', className)}>
       {label && <Text variant="label">{label}</Text>}
       <Layout row center between>
         {step('down')}
         {display}
         {step('up')}
       </Layout>
-    </Layout>
+    </Card>
   )
 }

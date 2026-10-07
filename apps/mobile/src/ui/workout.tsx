@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Pressable } from 'react-native'
+import { useState, type ReactNode } from 'react'
+import { Pressable, View } from 'react-native'
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { METCON_LABEL, metconLoad } from '../data/rules'
 import { useStore } from '../data/store'
 import type { LiftPart, MetconPart, WarmupItem } from '../data/types'
@@ -13,36 +14,56 @@ import { Text } from './Text'
 
 export function WarmupSection({ items, collapsible, dim }: { items: WarmupItem[]; collapsible?: boolean; dim?: boolean }) {
   const { movementName } = useStore()
-  const [open, setOpen] = useState(true)
-  return (
-    <Section heading={collapsible ? undefined : 'Warm-up'}>
-      {collapsible && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open }}
-          accessibilityLabel="Warm-up"
-          onPress={() => setOpen((o) => !o)}
-          className="h-11 -my-3 flex-row items-center justify-between"
-        >
-          <Text variant="heading">Warm-up</Text>
-          <Layout style={{ transform: [{ rotate: open ? '0deg' : '-90deg' }] }}>
-            <ChevronDown />
-          </Layout>
-        </Pressable>
-      )}
-      {open && (
-        <Layout className="gap-2.5">
-          {items.map((i, idx) => (
-            <Layout key={idx} row className="gap-3.5">
-              <Text variant="mono" className="w-16 leading-[23px]">
-                {i.qty}
-              </Text>
-              <Text className={cx('flex-1', dim && 'text-fg-2')}>{movementName(i.movementId)}</Text>
-            </Layout>
-          ))}
+  const list = (
+    <Layout className="gap-2.5">
+      {items.map((i, idx) => (
+        <Layout key={idx} row className="gap-3.5">
+          <Text variant="mono" className="w-16 leading-[23px]">
+            {i.qty}
+          </Text>
+          <Text className={cx('flex-1', dim && 'text-fg-2')}>{movementName(i.movementId)}</Text>
         </Layout>
-      )}
-    </Section>
+      ))}
+    </Layout>
+  )
+  if (!collapsible) return <Section heading="Warm-up">{list}</Section>
+  return <CollapsibleWarmup>{list}</CollapsibleWarmup>
+}
+
+/** Title row toggles the list; height, fade and chevron animate together, so rows below slide. */
+function CollapsibleWarmup({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(true)
+  const [height, setHeight] = useState(0) // natural height of the list, measured once laid out
+  const progress = useSharedValue(1) // 1 = open, 0 = closed
+  const body = useAnimatedStyle(() => (height ? { height: progress.value * height, opacity: progress.value } : { opacity: progress.value }))
+  const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${(progress.value - 1) * 90}deg` }] }))
+
+  const toggle = () => {
+    progress.set(withTiming(open ? 0 : 1, { duration: 260, easing: Easing.out(Easing.cubic) }))
+    setOpen(!open)
+  }
+
+  return (
+    <Layout className="py-7 border-b border-line">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel="Warm-up"
+        onPress={toggle}
+        className="h-11 -my-3 flex-row items-center justify-between"
+      >
+        <Text variant="heading">Warm-up</Text>
+        <Animated.View style={chevron}>
+          <ChevronDown />
+        </Animated.View>
+      </Pressable>
+      <Animated.View style={[{ overflow: 'hidden' }, body]} accessibilityElementsHidden={!open} importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}>
+        {/* Unconstrained inner view: reports the list's natural height even while the outer one animates. */}
+        <View className="pt-4" onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
+          {children}
+        </View>
+      </Animated.View>
+    </Layout>
   )
 }
 

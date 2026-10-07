@@ -1,39 +1,35 @@
 import { useClerk, useUser } from '@clerk/expo'
-import { router } from 'expo-router'
-import { useStore } from '../src/data/store'
-import { ChevronRight, Layout, ListRow, Screen, Text } from '../src/ui'
+import { useQuery } from 'convex/react'
+import { Linking } from 'react-native'
+import { api } from '../../../convex/_generated/api'
+import { webUrl } from '../src/auth/config'
+import { Screen } from '../src/shell/Screen'
+import { ArrowRight, Layout, ListRow, Text } from '../src/ui'
 
-// Proposed menu (handoff §5.3). Only Personal records is built.
-const LIFTS = ['deadlift', 'backSquat', 'benchPress', 'strictPress']
-const LATER = ['Membership', 'Coaches', 'Settings']
+// Web app pages, mirroring the web nav (apps/web AppShell): Home for everyone, the rest by role.
+const WEB_PAGES = [
+  { label: 'Home', hash: '#/', roles: ['athlete', 'coach', 'admin'] },
+  { label: 'Gyms', hash: '#/gyms', roles: ['coach', 'admin'] },
+  { label: 'Workouts', hash: '#/workouts', roles: ['coach', 'admin'] },
+  { label: 'Library', hash: '#/library', roles: ['coach', 'admin'] },
+  { label: 'Users', hash: '#/admin', roles: ['admin'] },
+] as const
 
 export default function MenuScreen() {
-  const store = useStore()
   const { signOut } = useClerk()
   const { user } = useUser()
+  const me = useQuery(api.users.current)
+  const role = me?.role ?? 'athlete'
+  const pages = WEB_PAGES.filter((p) => (p.roles as readonly string[]).includes(role))
+
   return (
     <Screen header={{ nav: 'back', eyebrow: 'Alpha', title: 'Menu' }}>
-      <Text variant="heading">Personal records</Text>
+      <Text variant="heading">On the web</Text>
       <Layout className="mt-3 border-t border-line">
-        {LIFTS.map((id) => {
-          const max = store.liftStats(id, undefined, store.today).training
-          return (
-            <ListRow key={id} onPress={() => router.push(`/record/${id}`)} accessibilityLabel={store.movementName(id)}>
-              <Text>{store.movementName(id)}</Text>
-              <Layout row center className="gap-2.5">
-                <Text variant="mono">{max ? `${max.weight} lb` : '—'}</Text>
-                <ChevronRight />
-              </Layout>
-            </ListRow>
-          )
-        })}
-      </Layout>
-
-      <Layout className="mt-7 border-t border-line">
-        {LATER.map((label) => (
-          <ListRow key={label}>
-            <Text className="text-muted">{label}</Text>
-            <Text variant="label">Soon</Text>
+        {pages.map((p) => (
+          <ListRow key={p.hash} onPress={() => void Linking.openURL(`${webUrl}/${p.hash}`)} accessibilityLabel={`Open ${p.label} on the web`}>
+            <Text>{p.label}</Text>
+            <ArrowRight />
           </ListRow>
         ))}
       </Layout>

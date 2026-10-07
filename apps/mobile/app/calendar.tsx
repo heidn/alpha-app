@@ -5,7 +5,8 @@ import { clockLabel, dayTitle, fromISO, monthGrid, monthName } from '../src/data
 import { divisionText, METCON_LABEL, scoreText, topSet } from '../src/data/rules'
 import { useStore } from '../src/data/store'
 import type { ClassSession, ISODate, Workout } from '../src/data/types'
-import { Button, Card, ChevronLeft, ChevronRight, cx, haptic, Layout, ListRow, Screen, Text } from '../src/ui'
+import { Button, Card, ChevronLeft, ChevronRight, cx, haptic, Layout, ListRow, Text } from '../src/ui'
+import { Screen } from '../src/shell/Screen'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Animated, Easing, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
-import { color, font } from '../tokens'
+import { color, font } from '../theme'
 import { haptic } from './hooks'
 
 const PAD = 4

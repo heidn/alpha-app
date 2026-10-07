@@ -1,10 +1,10 @@
 import { router } from 'expo-router'
 import { Pressable, useWindowDimensions } from 'react-native'
-import { clockLabel } from '../src/data/dates'
 import { divisionText, scoreText, topSet } from '../src/data/rules'
 import { useStore } from '../src/data/store'
-import { color } from '../src/tokens'
-import { ArrowRight, Button, CalendarIcon, Check, Layout, MenuIcon, Plus, Screen, Section, Text } from '../src/ui'
+import { color } from '../src/theme'
+import { ArrowRight, Button, CalendarIcon, Check, Layout, MenuIcon, Plus, Section, Text } from '../src/ui'
+import { Screen } from '../src/shell/Screen'
 import { LiftTitle, MetconHeader, MetconItems, WarmupSection } from '../src/ui/workout'
 
 export default function TodayScreen() {
@@ -15,7 +15,6 @@ export default function TodayScreen() {
   const { today } = store
   const workout = store.workoutOn(today)
   const booking = store.bookingOn(today)
-  const bookedClass = booking && store.classesOn(today).find((c) => c.id === booking.classSessionId)
   const lift = workout?.lift
   const stats = lift ? store.liftStats(lift.movementId, lift.percent, today) : undefined
   const liftResult = workout && store.liftResult(workout.id)
@@ -53,14 +52,7 @@ export default function TodayScreen() {
               <Text className="font-radwave text-[24px] tracking-[0.5px]">signed in</Text>
             </Button>
           ) : (
-            <Button
-              variant="hero"
-              label="sign in"
-              accessibilityLabel={bookedClass ? `sign in, ${clockLabel(bookedClass.startsAt)} class` : 'sign in'}
-              onPress={() => store.setSignedIn(today, true)}
-            >
-              {bookedClass && <Text className="font-mono text-[13px] tracking-[1px] text-muted-ink">{clockLabel(bookedClass.startsAt)}</Text>}
-            </Button>
+            <Button variant="hero" label="sign in" onPress={() => store.setSignedIn(today, true)} />
           )}
           <Button variant="ghost" label="Leaderboard" onPress={() => router.push('/leaderboard')} className="mt-3 self-center">
             <ArrowRight size={14} />

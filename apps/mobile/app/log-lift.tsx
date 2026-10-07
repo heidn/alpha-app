@@ -2,7 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { useStore } from '../src/data/store'
 import type { LiftSet } from '../src/data/types'
-import { Button, Field, Layout, Screen, Stepper, Text } from '../src/ui'
+import { Button, Field, Layout, Stepper, Text } from '../src/ui'
+import { Screen } from '../src/shell/Screen'
 import { LiftTitle } from '../src/ui/workout'
 
 const EMPTY_BAR = 45

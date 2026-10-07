@@ -12,7 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProviders } from '../src/auth/AuthProviders'
 import { useStoreUser } from '../src/auth/useStoreUser'
 import { StoreProvider } from '../src/data/store'
-import { color } from '../src/tokens'
+import { color } from '../src/theme'
 
 const sheet: ComponentProps<typeof Stack.Screen>['options'] = {
   presentation: 'formSheet',

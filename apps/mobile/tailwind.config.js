@@ -1,5 +1,5 @@
-// Tailwind loads this with jiti, so it can read the TypeScript tokens directly.
-const { color, font } = require('./src/tokens.ts')
+// Colors and fonts come from src/theme.js (edit hexes there).
+const { color, font } = require('./src/theme.js')
 
 // Custom fonts don't synthesize weights in React Native, so each weight is its own family:
 // use `font-sans-medium`, not `font-sans font-medium`.

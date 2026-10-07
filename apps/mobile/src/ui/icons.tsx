@@ -1,5 +1,5 @@
 import Svg, { Path, Rect } from 'react-native-svg'
-import { color } from '../tokens'
+import { color } from '../theme'
 
 type IconProps = { size?: number; stroke?: string; width?: number }
 

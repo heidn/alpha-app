@@ -1,4 +1,5 @@
-import { Screen, Text } from '../src/ui'
+import { Text } from '../src/ui'
+import { Screen } from '../src/shell/Screen'
 
 // Not designed yet (handoff §5.3).
 export default function LeaderboardScreen() {

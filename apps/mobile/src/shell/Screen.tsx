@@ -3,12 +3,8 @@ import type { ReactNode, RefObject } from 'react'
 import { KeyboardAvoidingView, Platform, View } from 'react-native'
 import { ScrollView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { color } from '../tokens'
-import { Button } from './Button'
-import { cx } from './cx'
-import { ChevronLeft, Close } from './icons'
-import { Layout } from './Layout'
-import { Text } from './Text'
+import { color } from '../theme'
+import { Button, ChevronLeft, Close, cx, Layout, Text } from '../ui'
 
 type Header = {
   /** Top-left control. back = chevron, close = ✕ (sheets/modals). */
@@ -33,7 +29,7 @@ type Props = {
   children: ReactNode
 }
 
-/** Page shell: safe area, optional header, scrolling content, optional pinned footer. */
+/** App page shell (not part of the UI library): safe area, optional header, scrolling content, optional pinned footer. */
 export function Screen({ header, footer, scrollRef, gutter = true, className, children }: Props) {
   const { top, bottom } = useSafeAreaInsets()
   const leave = () => (router.canGoBack() ? router.back() : router.replace(header?.fallback ?? '/'))

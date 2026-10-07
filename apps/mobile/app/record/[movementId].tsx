@@ -4,7 +4,8 @@ import type { ScrollView } from 'react-native-gesture-handler'
 import { longDate } from '../../src/data/dates'
 import { percentOf, projectedAtPercent } from '../../src/data/rules'
 import { useStore } from '../../src/data/store'
-import { Card, Check, Layout, Screen, Text } from '../../src/ui'
+import { Card, Check, Layout, Text } from '../../src/ui'
+import { Screen } from '../../src/shell/Screen'
 import { PercentTable } from '../../src/ui/PercentTable'
 
 export default function PersonalRecordScreen() {
@@ -22,7 +23,7 @@ export default function PersonalRecordScreen() {
   return (
     <Screen header={{ nav: 'back', eyebrow: 'Personal record', title: store.movementName(movementId) }} scrollRef={scrollRef}>
       <Layout row className="gap-2.5">
-        <Card className="flex-1 gap-2.5 rounded-[14px] border-[1.5px] border-white">
+        <Card variant="emphasis" className="flex-1 gap-2.5">
           <Layout row center className="gap-1.5">
             <Check size={12} width={3} />
             <Text variant="label" className="text-fg">
@@ -34,7 +35,7 @@ export default function PersonalRecordScreen() {
           </Text>
           <Text className="font-mono text-[11px] text-muted">{stats.actual ? `Lifted ${longDate(stats.actual.date)}` : 'No max yet'}</Text>
         </Card>
-        <Card variant="dashed" className="flex-1 gap-2.5 rounded-[14px] border-[1.5px] border-dashed">
+        <Card variant="dashed" className="flex-1 gap-2.5">
           <Layout row center className="gap-1.5">
             <Text className="font-mono text-[13px] text-fg-2">≈</Text>
             <Text variant="label" className="text-fg-2">

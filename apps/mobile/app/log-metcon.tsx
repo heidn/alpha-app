@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { METCON_LABEL, repsPerRound } from '../src/data/rules'
 import { useStore } from '../src/data/store'
 import type { Division, MetconPart, MetconScore } from '../src/data/types'
-import { Button, Field, Layout, Screen, Segmented, Stepper, Text } from '../src/ui'
+import { Button, Field, Layout, Segmented, Stepper, Text } from '../src/ui'
+import { Screen } from '../src/shell/Screen'
 import { MetconItems } from '../src/ui/workout'
 
 const HINT: Record<MetconPart['type'], string> = {

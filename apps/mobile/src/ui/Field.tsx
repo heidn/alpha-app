@@ -1,5 +1,5 @@
 import { TextInput, type TextInputProps } from 'react-native'
-import { color } from '../tokens'
+import { color } from '../theme'
 import { cx } from './cx'
 import { Layout } from './Layout'
 import { Text } from './Text'

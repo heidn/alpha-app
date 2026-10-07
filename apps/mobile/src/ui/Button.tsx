@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { ActivityIndicator, Pressable, Text } from 'react-native'
-import { color } from '../tokens'
+import { color } from '../theme'
 import { cx } from './cx'
 import { haptic } from './hooks'
 

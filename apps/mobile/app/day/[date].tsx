@@ -2,8 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { clockLabel, dayTitle } from '../../src/data/dates'
 import { divisionText, scoreText, topSet } from '../../src/data/rules'
 import { useStore } from '../../src/data/store'
-import { color } from '../../src/tokens'
-import { Button, Card, Check, cx, Layout, Pencil, Plus, Screen, Section, Text } from '../../src/ui'
+import { color } from '../../src/theme'
+import { Button, Card, Check, cx, Layout, Pencil, Plus, Section, Text } from '../../src/ui'
+import { Screen } from '../../src/shell/Screen'
 import { LiftTitle, MetconHeader, MetconItems, WarmupSection } from '../../src/ui/workout'
 
 export default function PastDayScreen() {
@@ -78,7 +79,7 @@ export default function PastDayScreen() {
               <MetconHeader metcon={workout.metcon} />
               <MetconItems metcon={workout.metcon} dim />
               {metRes ? (
-                <Card variant="white" onPress={editMetcon} accessibilityLabel="Edit metcon result" className="flex-row items-center justify-between py-[18px] px-5 rounded-[14px]">
+                <Card variant="filled" onPress={editMetcon} accessibilityLabel="Edit metcon result" className="flex-row items-center justify-between">
                   <Layout row className="items-baseline gap-3">
                     <Text className="font-mono-medium text-[34px] leading-[38px] text-ink">{scoreText(metRes.score)}</Text>
                     <Text className="font-sans-semibold text-[13px] tracking-[1.6px] uppercase text-ink">{divisionText(metRes.division)}</Text>

@@ -1,7 +1,7 @@
 import { useRef, useState, type RefObject } from 'react'
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native'
 import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler'
-import { color, font } from '../tokens'
+import { color, font } from '../theme'
 import { haptic } from './hooks'
 import { Check } from './icons'
 import { Grain } from './Grain'
