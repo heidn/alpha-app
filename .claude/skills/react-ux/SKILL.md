@@ -1,13 +1,13 @@
 ---
 name: react-ux
-description: UX/visual conventions for this React app. Load before building or restyling any page, component, form, table, or navigation in src/.
+description: UX/visual conventions for this React app. Load before building or restyling any page, component, form, table, or navigation in apps/web/src/.
 ---
 
 # React UX conventions (Alpha Strength)
 
 ## Stack constraints
-- Plain CSS: global tokens in `src/index.css`, per-component **CSS Modules** colocated (`Foo.tsx` + `Foo.module.css`). No UI/CSS libs without asking.
-- Routing: tiny hash router `src/features/shell/useRoute.ts` (`#/`, `#/admin`). Add routes in `AppShell.tsx`.
+- Plain CSS: global tokens in `apps/web/src/index.css`, per-component **CSS Modules** colocated (`Foo.tsx` + `Foo.module.css`). No UI/CSS libs without asking.
+- Routing: tiny hash router `apps/web/src/features/shell/useRoute.ts` (`#/`, `#/admin`). Add routes in `AppShell.tsx`.
 - Auth UI: Clerk components (`SignInButton`, `SignUpButton`, `UserButton`) inside Convex `<Authenticated>/<Unauthenticated>/<AuthLoading>`.
 
 ## Design tokens (use vars, never raw hex in modules)

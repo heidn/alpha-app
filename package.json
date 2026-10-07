@@ -3,27 +3,23 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run dev -w @alpha/web --",
     "dev:backend": "convex dev",
-    "build": "tsc -b && vite build",
-    "typecheck": "tsc -b",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "dev:mobile": "npm --prefix apps/mobile start",
+    "build": "npm run build -w @alpha/web",
+    "typecheck": "npm run typecheck -w @alpha/web && npm --prefix apps/mobile run typecheck",
+    "lint": "oxlint apps convex",
+    "setup:mobile": "npm --prefix apps/mobile ci"
   },
   "dependencies": {
-    "@clerk/react": "^6.17.3",
-    "convex": "^1.46.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "convex": "^1.46.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "typescript": "~6.0.2"
   }
 }

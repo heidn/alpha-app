@@ -1,5 +1,5 @@
 # CLAUDE.md
-Stack: Vite + React (TS) · Convex (backend/DB) · Clerk (auth). Team: 2 devs, parallel work, same repo.
+Stack: `apps/web` Vite + React (TS) · `apps/mobile` Expo/React Native (TS) · Convex (backend/DB, repo-root `convex/`) · Clerk (auth). Team: 2 devs, parallel work, same repo.
 Be terse. Code over prose. No restating the task, no recap of diffs.
 
 ## 0. Session start (mandatory)
@@ -17,8 +17,9 @@ Dev id = `$CLAUDE_DEV` or `git config user.name`.
 ## 2. Two-dev collision rules
 - Never work on `main`. Branch: `<dev>/<short-topic>`. One task = one branch = one worktree (`git worktree add ../alpha-app-<topic> -b <dev>/<topic>`).
 - Before starting: `git fetch -q` and rebase on `origin/main`. Rebase again before PR.
-- Hot files (edit minimally, in small isolated commits, announce in Slack): `convex/schema.ts`, `convex/auth.config.ts`, `convex/http.ts` (if added), `src/main.tsx`, `src/App.tsx`/router, `package.json`, lockfile, `.env*`, `CLAUDE.md`, `.claude/settings.json`.
-- Prefer adding new files over editing shared ones (one Convex file per domain: `convex/<domain>.ts`; one component folder per feature: `src/features/<feature>/`).
+- Hot files (edit minimally, in small isolated commits, announce in Slack): `convex/schema.ts`, `convex/auth.config.ts`, `convex/http.ts` (if added), `apps/web/src/main.tsx`, `apps/web/src/App.tsx`/router, `package.json`s, lockfiles, `.env*`, `CLAUDE.md`, `.claude/settings.json`.
+- Prefer adding new files over editing shared ones (one Convex file per domain: `convex/<domain>.ts`; one component folder per feature: `apps/web/src/features/<feature>/`).
+- Installs: root `npm ci` = Convex + web (npm workspace). `apps/mobile` has its OWN lockfile/node_modules (`npm run setup:mobile`); add mobile deps with `npx expo install` inside it. Not a workspace: Expo pins a different React than web.
 - Never hand-edit `convex/_generated/**` or lockfile conflicts: regenerate (`npx convex dev --once`, reinstall).
 - Each dev uses their OWN Convex dev deployment (never share one). Never run `convex deploy` or touch prod; humans only.
 - Schema changes: additive and backward-compatible only (optional fields → backfill → then tighten). Post in Slack before merge.
