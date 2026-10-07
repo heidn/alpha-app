@@ -51,6 +51,8 @@
   margin: 0;
   padding: 0;
   flex: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .link {
