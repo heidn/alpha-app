@@ -1,7 +1,7 @@
 # STATE (shared truth, ≤40 lines — rewrite, don't append)
 
 ## Architecture
-- Layout: `apps/web` (Vite 8 + React 19 + TS 6 strict SPA, npm workspace, envDir = repo root), `apps/mobile` (Expo SDK 57/RN 0.86 + Expo Router, separate install, metro watches `convex/`; athlete app from Claude Design handoff: Today/log sheets/calendar/past day/PR on an in-memory fixture store `src/data/store.tsx`, rules in `src/data/rules.ts`), `convex/` at root.
+- Layout: `apps/web` (Vite 8 + React 19 + TS 6 strict SPA, npm workspace, envDir = repo root), `apps/mobile` (Expo SDK 57/RN 0.86 + Expo Router, separate install, metro watches `convex/`; athlete app from Claude Design handoff: Today/log sheets/calendar/past day/PR on an in-memory fixture store `src/data/store.tsx`, rules in `src/data/rules.ts`; Clerk sign-in via `src/auth/`, keys from root .env.local through app.config.js), `convex/` at root.
 - Web: `apps/web/src/`. Lint: oxlint. Dev URL http://localhost:5173.
 - Convex backend in `convex/`, one file per domain (`convex/<domain>.ts`).
 - Auth: `ClerkProvider` → `ConvexProviderWithClerk` (`apps/web/src/main.tsx`). Convex env `CLERK_FRONTEND_API_URL` = Clerk Frontend API URL.

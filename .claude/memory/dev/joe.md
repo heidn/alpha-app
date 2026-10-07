@@ -1,2 +1,2 @@
 # joe
-- Branch joe/mobile-today: handoff screens in apps/mobile on fixtures. Next: decide backend mapping (bookings, maxes, scores) + Clerk Expo sign-in, then swap store.tsx for Convex hooks. Needs Xcode for simulator.
+- joe/mobile-today: screens + Clerk sign-in (fixture data). joe/schema-athlete: DRAFT schema for review. Next: after schema merge, swap store.tsx for Convex queries (bookings, results, maxes). Needs Xcode for simulator.

@@ -1,3 +1,4 @@
+import { useClerk, useUser } from '@clerk/expo'
 import { router } from 'expo-router'
 import { StyleSheet, Text, View } from 'react-native'
 import { useStore } from '../src/data/store'
@@ -12,6 +13,8 @@ const LATER = ['Membership', 'Coaches', 'Settings']
 
 export default function MenuScreen() {
   const store = useStore()
+  const { signOut } = useClerk()
+  const { user } = useUser()
   return (
     <PlainPage eyebrow="Alpha" title="Menu">
       <SectionHeading>Personal records</SectionHeading>
@@ -36,6 +39,14 @@ export default function MenuScreen() {
             <Text style={type.monoLabel}>Soon</Text>
           </View>
         ))}
+      </View>
+      <View style={[styles.list, { marginTop: 28 }]}>
+        <PressableRow accessibilityRole="button" onPress={() => void signOut()} style={styles.row}>
+          <View style={{ gap: 2 }}>
+            <Text style={type.body}>Sign out</Text>
+            {user?.primaryEmailAddress && <Text style={styles.value}>{user.primaryEmailAddress.emailAddress}</Text>}
+          </View>
+        </PressableRow>
       </View>
     </PlainPage>
   )
