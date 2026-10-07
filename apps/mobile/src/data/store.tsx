@@ -39,6 +39,8 @@ function useStoreState(today: ISODate) {
         training: tm,
         prescribed: tm && percent !== undefined ? percentOf(tm.weight, percent, settings.plateIncrement) : undefined,
         lastAtPercent: percent !== undefined ? lastAtPercent(history, percent, on) : undefined,
+        /** Top set from the most recent earlier session at `pct`, for any row of the table. */
+        lastAt: (pct: number) => lastAtPercent(history, pct, on),
       }
     }
 

@@ -1,25 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router'
+import { useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { longDate } from '../../src/data/dates'
-import { percentOf } from '../../src/data/rules'
+import { percentOf, projectedAtPercent } from '../../src/data/rules'
 import { useStore } from '../../src/data/store'
 import { color, font, gutter, type } from '../../src/theme'
 import { Check, ChevronLeft } from '../../src/ui/icons'
 import { useTopInset } from '../../src/ui/hooks'
-import { Grain, IconButton, SectionHeading } from '../../src/ui/kit'
-
-const PERCENTS = Array.from({ length: 13 }, (_, i) => 100 - i * 5)
-
-/** Grain density scales with percentage: 0.1 at 40%, 1 at 100%. */
-const grainOpacity = (pct: number) => {
-  const t = (pct - 40) / 60
-  return 0.1 + 0.9 * t * t
-}
+import { IconButton, SectionHeading } from '../../src/ui/kit'
+import { PercentTable } from '../../src/ui/PercentTable'
 
 export default function PersonalRecordScreen() {
   const { movementId } = useLocalSearchParams<{ movementId: string }>()
   const store = useStore()
   const top = useTopInset()
+  const [scrollEnabled, setScrollEnabled] = useState(true)
   const { today } = store
   // Today's programmed percent for this lift, if it's on today's workout.
   const todayLift = store.workoutOn(today)?.lift
@@ -30,7 +25,7 @@ export default function PersonalRecordScreen() {
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'))
 
   return (
-    <ScrollView style={{ backgroundColor: color.bg }} contentContainerStyle={[styles.page, { paddingTop: top + 20 }]}>
+    <ScrollView scrollEnabled={scrollEnabled} style={{ backgroundColor: color.bg }} contentContainerStyle={[styles.page, { paddingTop: top + 20 }]}>
       <IconButton label="Back" onPress={back} style={{ marginLeft: -12 }}>
         <ChevronLeft size={20} />
       </IconButton>
@@ -68,59 +63,13 @@ export default function PersonalRecordScreen() {
       <SectionHeading style={{ marginTop: 32 }}>Percentages</SectionHeading>
 
       {tm ? (
-        <View style={styles.table}>
-          {PERCENTS.map((pct) => {
-            const weight = percentOf(tm.weight, pct, step)
-            if (pct === todayPct) {
-              return (
-                <View key={pct} style={[styles.row, styles.rowToday]} accessibilityLabel={`Today, ${pct}%: ${weight} pounds`}>
-                  <View style={styles.rowLeft}>
-                    <Text style={[styles.pct, { color: color.bg }]}>{pct}%</Text>
-                    <Text style={styles.todayTag}>Today</Text>
-                  </View>
-                  <View style={styles.todayValues}>
-                    <View style={styles.todayCol}>
-                      <View style={styles.todayLabelRow}>
-                        {tm.source === 'actual' ? (
-                          <Check size={10} width={3} stroke={color.mutedOnWhite} />
-                        ) : (
-                          <Text style={styles.todayLabel}>≈</Text>
-                        )}
-                        <Text style={styles.todayLabel}>{tm.source === 'actual' ? 'Actual' : 'Projected'}</Text>
-                      </View>
-                      <Text style={[styles.weight, { color: color.bg, fontFamily: font.mono }]}>
-                        {weight} <Text style={[styles.unit, { color: color.mutedOnWhite }]}>lb</Text>
-                      </Text>
-                    </View>
-                    {stats.lastAtPercent !== undefined && (
-                      <>
-                        <View style={styles.todayDivider} />
-                        <View style={styles.todayCol}>
-                          <View style={styles.todayLabelRow}>
-                            <Check size={10} width={3} stroke={color.mutedOnWhite} />
-                            <Text style={styles.todayLabel}>Last {pct}%</Text>
-                          </View>
-                          <Text style={[styles.weight, { color: color.bg }]}>
-                            {stats.lastAtPercent} <Text style={[styles.unit, { color: color.mutedOnWhite }]}>lb</Text>
-                          </Text>
-                        </View>
-                      </>
-                    )}
-                  </View>
-                </View>
-              )
-            }
-            return (
-              <View key={pct} style={styles.row} accessibilityLabel={`${pct}%: ${weight} pounds`}>
-                <Grain opacity={grainOpacity(pct)} />
-                <Text style={styles.pct}>{pct}%</Text>
-                <Text style={styles.weight}>
-                  {weight} <Text style={styles.unit}>lb</Text>
-                </Text>
-              </View>
-            )
-          })}
-        </View>
+        <PercentTable
+          todayPct={todayPct}
+          weightAt={(pct) => percentOf(tm.weight, pct, step)}
+          projectedAt={(pct) => projectedAtPercent(stats.projected ?? tm.weight, pct, step)}
+          lastAt={stats.lastAt}
+          onDragChange={(d) => setScrollEnabled(!d)}
+        />
       ) : (
         <Text style={[type.body, { color: color.muted, marginTop: 14 }]}>Log a few sets to see your percentages.</Text>
       )}
@@ -138,26 +87,4 @@ const styles = StyleSheet.create({
   cardValue: { fontFamily: font.monoMedium, fontSize: 38, lineHeight: 42, color: color.text },
   cardUnit: { fontFamily: font.mono, fontSize: 13, color: color.muted },
   cardSub: { fontFamily: font.mono, fontSize: 11, color: color.muted },
-  table: { marginTop: 14, gap: 4 },
-  row: {
-    height: 46,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: color.surface,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rowToday: { height: 64, backgroundColor: color.white },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  pct: { width: 44, fontFamily: font.mono, fontSize: 15, color: color.text },
-  todayTag: { fontFamily: font.sansSemi, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: color.accentOnWhite },
-  weight: { fontFamily: font.monoMedium, fontSize: 20, color: color.text },
-  unit: { fontFamily: font.mono, fontSize: 12, color: color.muted },
-  todayValues: { flexDirection: 'row', gap: 18 },
-  todayCol: { alignItems: 'flex-end', gap: 3 },
-  todayLabel: { fontFamily: font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: color.mutedOnWhite },
-  todayLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  todayDivider: { width: 1, backgroundColor: '#D4D4D8' },
 })

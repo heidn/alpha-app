@@ -109,3 +109,12 @@ export function metconLoad(item: MetconItem, rx: 'heavy' | 'light'): string | un
   const parts = [w !== undefined ? `${w} lb` : undefined, item.spec].filter(Boolean)
   return parts.length ? parts.join(' · ') : undefined
 }
+
+/**
+ * Projected weight for one row of the Personal record percentage table.
+ * TODO(projection): PLACEHOLDER. The real per-percentage projection formula hasn't been decided;
+ * this just scales the projected max. Replace it once the calculation is defined.
+ */
+export function projectedAtPercent(projectedMax: number, percent: number, step: number): number {
+  return percentOf(projectedMax, percent, step)
+}
