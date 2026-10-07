@@ -11,9 +11,14 @@
 - Routing: tiny hash router `src/features/shell/useRoute.ts` (no dep). Styling: tokens in `src/index.css` + colocated CSS Modules.
 - Shell: `App` -> LoginPage (unauth) | AppShell (nav + UserButton, routes home/admin).
 
+## Domain model (`convex/schema.ts`, validators in `convex/domain.ts`)
+- Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.
+- `workouts` (one per class+date) embed `program`: sections→exercises→prescriptions, order = array order, items have stable client `key`; `score` present = scored item.
+- `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts`.
+
 ## Conventions
 - See CLAUDE.md. Each dev has own Convex dev deployment.
 
 ## Open decisions
 - Test runner (none yet). CI.
-- Domain model for workouts/classes/members not designed.
+- Domain screens (gyms, classes, library, workout editor) in progress: plan PRs wod-schema→gyms→classes→library→workouts.
