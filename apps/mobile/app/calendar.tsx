@@ -1,20 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import { clockLabel, dayTitle, fromISO, monthGrid, monthName } from '../src/data/dates'
 import { divisionText, METCON_LABEL, scoreText, topSet } from '../src/data/rules'
 import { useStore } from '../src/data/store'
 import type { ClassSession, ISODate, Workout } from '../src/data/types'
-import { color, font, gutter, type } from '../src/theme'
-import { ChevronLeft, ChevronRight, Close } from '../src/ui/icons'
-import { haptic, useTopInset } from '../src/ui/hooks'
-import { IconButton, PressableRow, SectionHeading } from '../src/ui/kit'
+import { Button, Card, ChevronLeft, ChevronRight, cx, haptic, Layout, ListRow, Screen, Text } from '../src/ui'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 export default function CalendarScreen() {
   const store = useStore()
-  const top = useTopInset()
   const { today } = store
   const params = useLocalSearchParams<{ date?: string }>()
   const [selected, setSelected] = useState<ISODate>(params.date ?? today)
@@ -22,62 +18,57 @@ export default function CalendarScreen() {
     const d = fromISO(selected)
     return { year: d.getFullYear(), month: d.getMonth() }
   })
-  const close = () => (router.canGoBack() ? router.back() : router.replace('/'))
   const shiftMonth = (delta: number) =>
     setCursor(({ year, month }) => {
       const d = new Date(year, month + delta, 1)
       return { year: d.getFullYear(), month: d.getMonth() }
     })
+  const goToday = () => {
+    const d = fromISO(today)
+    setCursor({ year: d.getFullYear(), month: d.getMonth() })
+    setSelected(today)
+  }
 
   const cells = monthGrid(cursor.year, cursor.month)
   const workout = store.workoutOn(selected)
-  const booking = store.bookingOn(selected)
-  const attended = booking?.status === 'signedIn'
+  const attended = store.bookingOn(selected)?.status === 'signedIn'
   const isPast = selected < today
 
   return (
-    <ScrollView style={{ backgroundColor: color.bg }} contentContainerStyle={[styles.page, { paddingTop: top + 20 }]}>
-      <View style={styles.topBar}>
-        <IconButton label="Close" onPress={close} style={{ marginLeft: -12 }}>
-          <Close size={20} />
-        </IconButton>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            const d = fromISO(today)
-            setCursor({ year: d.getFullYear(), month: d.getMonth() })
-            setSelected(today)
-          }}
-          style={styles.todayLink}
-        >
-          <Text style={styles.todayLinkText}>Today</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.monthRow}>
-        <Text style={type.title} accessibilityRole="header">
-          {monthName(cursor.month)} <Text style={{ color: color.muted }}>{cursor.year}</Text>
+    <Screen
+      header={{
+        nav: 'close',
+        right: (
+          <Pressable accessibilityRole="button" onPress={goToday} className="h-11 justify-center">
+            <Text className="font-mono text-[12px] tracking-[1.7px] uppercase">Today</Text>
+          </Pressable>
+        ),
+      }}
+    >
+      <Layout row center between className="-mt-2">
+        <Text variant="title" accessibilityRole="header">
+          {monthName(cursor.month)} <Text className="text-muted">{cursor.year}</Text>
         </Text>
-        <View style={{ flexDirection: 'row', marginRight: -12 }}>
-          <IconButton label="Previous month" onPress={() => shiftMonth(-1)}>
+        <Layout row className="-mr-3">
+          <Button variant="icon" accessibilityLabel="Previous month" onPress={() => shiftMonth(-1)}>
             <ChevronLeft />
-          </IconButton>
-          <IconButton label="Next month" onPress={() => shiftMonth(1)}>
+          </Button>
+          <Button variant="icon" accessibilityLabel="Next month" onPress={() => shiftMonth(1)}>
             <ChevronRight />
-          </IconButton>
-        </View>
-      </View>
+          </Button>
+        </Layout>
+      </Layout>
 
-      <View style={[styles.grid, { marginTop: 20 }]}>
+      <Layout row className="mt-5 -mx-0.5 flex-wrap">
         {WEEKDAYS.map((d, i) => (
-          <View key={i} style={styles.cellWrap}>
-            <Text style={styles.weekday}>{d}</Text>
+          <View key={i} className="w-[14.2857%] px-0.5">
+            <Text className="text-center font-mono text-[11px] tracking-[1.1px] text-muted">{d}</Text>
           </View>
         ))}
-      </View>
-      <View style={[styles.grid, { marginTop: 10, rowGap: 4 }]}>
+      </Layout>
+      <Layout row className="mt-2.5 -mx-0.5 flex-wrap gap-y-1">
         {cells.map((date, i) => (
-          <View key={date ?? `b${i}`} style={styles.cellWrap}>
+          <View key={date ?? `b${i}`} className="w-[14.2857%] px-0.5">
             {date && (
               <DayCell
                 date={date}
@@ -92,59 +83,45 @@ export default function CalendarScreen() {
             )}
           </View>
         ))}
-      </View>
+      </Layout>
 
-      <View style={styles.detail}>
-        <Text style={styles.dayLabel}>{selected === today ? "Today's workout" : dayTitle(selected)}</Text>
+      <Layout gap={5} className="mt-7 pt-6 border-t border-line">
+        <Text className="font-mono text-[13px] tracking-[1.6px] uppercase">{selected === today ? "Today's workout" : dayTitle(selected)}</Text>
 
         {selected === today && workout ? (
           <SummaryCard workout={workout} onPress={() => router.dismissTo('/')} />
         ) : isPast && attended && workout ? (
           <SummaryCard workout={workout} withResults onPress={() => router.push(`/day/${selected}`)} />
         ) : (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>{isPast ? 'Rest day' : 'Workout not posted yet'}</Text>
-          </View>
+          <Card variant="dashed">
+            <Text className="text-[15px] text-muted">{isPast ? 'Rest day' : 'Workout not posted yet'}</Text>
+          </Card>
         )}
 
-        <SectionHeading style={{ marginTop: 8 }}>Classes</SectionHeading>
+        <Text variant="heading" className="mt-2">
+          Classes
+        </Text>
         <ClassList date={selected} />
-      </View>
-    </ScrollView>
+      </Layout>
+    </Screen>
   )
 }
 
-function DayCell({
-  date,
-  today,
-  selected,
-  attended,
-  onPress,
-}: {
-  date: ISODate
-  today: ISODate
-  selected: boolean
-  attended: boolean
-  onPress: () => void
-}) {
+function DayCell({ date, today, selected, attended, onPress }: { date: ISODate; today: ISODate; selected: boolean; attended: boolean; onPress: () => void }) {
   const isToday = date === today
-  const past = date < today
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${dayTitle(date)}${attended ? ', attended' : ''}${isToday ? ', today' : ''}`}
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={[
-        styles.cell,
-        selected && styles.cellSelected,
-        isToday && !selected && styles.cellToday,
-      ]}
+      className={cx(
+        'aspect-square rounded border pt-[5px] pr-1.5 items-end overflow-hidden',
+        selected ? 'bg-white border-white' : isToday ? 'border-white' : 'border-cell-line',
+      )}
     >
-      <Text style={[styles.cellNum, past && { color: color.muted }, selected && { color: color.bg }]}>
-        {fromISO(date).getDate()}
-      </Text>
-      {attended && <View style={styles.attendBar} />}
+      <Text className={cx('font-mono text-[12px]', selected ? 'text-ink' : date < today ? 'text-muted' : 'text-fg')}>{fromISO(date).getDate()}</Text>
+      {attended && <View className="absolute left-0 right-0 bottom-0 h-[3px] bg-accent" />}
     </Pressable>
   )
 }
@@ -155,35 +132,39 @@ function SummaryCard({ workout, withResults, onPress }: { workout: Workout; with
   const liftRes = withResults ? store.liftResult(workout.id) : undefined
   const met = withResults ? store.metconResult(workout.id) : undefined
   return (
-    <PressableRow accessibilityRole="link" onPress={onPress} style={styles.card}>
-      <View style={{ gap: 12, flex: 1 }}>
+    <Card onPress={onPress} accessibilityRole="link" className="flex-row items-center gap-3">
+      <Layout gap={3} className="flex-1">
         {lift && (
-          <View style={{ gap: 3 }}>
-            <SectionHeading style={{ fontSize: 11 }}>Lifting</SectionHeading>
-            <Text style={type.body}>
+          <Layout className="gap-[3px]">
+            <Text variant="heading" className="text-[11px]">
+              Lifting
+            </Text>
+            <Text>
               {store.movementName(lift.movementId)}{' '}
-              <Text style={styles.cardMono}>
+              <Text className="font-mono text-[13px] text-muted">
                 {liftRes ? `top set ${topSet(liftRes).weight} lb` : `${lift.sets} × ${lift.reps} @ ${lift.percent}%`}
               </Text>
             </Text>
-          </View>
+          </Layout>
         )}
         {workout.metcon && (
-          <View style={{ gap: 3 }}>
-            <SectionHeading style={{ fontSize: 11 }}>Metcon</SectionHeading>
-            <Text style={type.body}>
+          <Layout className="gap-[3px]">
+            <Text variant="heading" className="text-[11px]">
+              Metcon
+            </Text>
+            <Text>
               {METCON_LABEL[workout.metcon.type]}{' '}
               {met && (
-                <Text style={styles.cardMono}>
+                <Text className="font-mono text-[13px] text-muted">
                   {scoreText(met.score)} {divisionText(met.division)}
                 </Text>
               )}
             </Text>
-          </View>
+          </Layout>
         )}
-      </View>
+      </Layout>
       <ChevronRight />
-    </PressableRow>
+    </Card>
   )
 }
 
@@ -193,11 +174,9 @@ function ClassList({ date }: { date: ISODate }) {
   const booking = store.bookingOn(date)
   // Once signed in that day, other classes are no longer bookable.
   const bookable = date >= store.today && booking?.status !== 'signedIn'
-  if (classes.length === 0) {
-    return <Text style={styles.emptyText}>No classes</Text>
-  }
+  if (classes.length === 0) return <Text className="text-[15px] text-muted">No classes</Text>
   return (
-    <View style={{ borderTopWidth: 1, borderTopColor: color.line }}>
+    <Layout className="border-t border-line">
       {classes.map((c) => (
         <ClassRow
           key={c.id}
@@ -211,116 +190,28 @@ function ClassList({ date }: { date: ISODate }) {
           onCancel={() => store.cancelBooking(date)}
         />
       ))}
-    </View>
+    </Layout>
   )
 }
 
-function ClassRow({
-  session,
-  status,
-  bookable,
-  onBook,
-  onCancel,
-}: {
-  session: ClassSession
-  status?: 'booked' | 'signedIn'
-  bookable: boolean
-  onBook: () => void
-  onCancel: () => void
-}) {
-  const mine = status !== undefined
-  const count = session.athletes + (mine ? 1 : 0)
+function ClassRow({ session, status, bookable, onBook, onCancel }: { session: ClassSession; status?: 'booked' | 'signedIn'; bookable: boolean; onBook: () => void; onCancel: () => void }) {
+  const time = clockLabel(session.startsAt)
+  const count = session.athletes + (status ? 1 : 0)
   return (
-    <View style={styles.classRow}>
-      <Text style={styles.classTime}>{clockLabel(session.startsAt)}</Text>
-      <View style={styles.classRight}>
-        <Text style={styles.classCount}>{session.capacity === undefined ? 'Open' : `${count} athletes`}</Text>
+    <ListRow className="min-h-[60px]">
+      <Text className="font-mono text-[17px]">{time}</Text>
+      <Layout row center gap={4}>
+        <Text className="font-mono text-[13px] text-muted">{session.capacity === undefined ? 'Open' : `${count} athletes`}</Text>
         {status === 'signedIn' ? (
-          <View style={[styles.classPill, styles.classPillOn]}>
-            <Text style={[styles.classPillText, { color: color.bg, fontFamily: font.sansSemi }]}>Signed in</Text>
+          <View className="h-9 px-3.5 rounded-full bg-white items-center justify-center">
+            <Text className="font-sans-semibold text-[14px] text-ink">Signed in</Text>
           </View>
         ) : status === 'booked' ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Booked ${clockLabel(session.startsAt)}. Tap to cancel.`}
-            onPress={onCancel}
-            style={[styles.classPill, { borderColor: color.white }]}
-          >
-            <Text style={styles.classPillText}>Booked</Text>
-          </Pressable>
+          <Button variant="outline" label="Booked" accessibilityLabel={`Booked ${time}. Tap to cancel.`} onPress={onCancel} className="border-white" />
         ) : bookable ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Book ${clockLabel(session.startsAt)}`}
-            onPress={onBook}
-            style={({ pressed }) => [styles.classPill, pressed && { backgroundColor: color.surface3 }]}
-          >
-            <Text style={styles.classPillText}>Book</Text>
-          </Pressable>
+          <Button variant="outline" label="Book" accessibilityLabel={`Book ${time}`} onPress={onBook} />
         ) : null}
-      </View>
-    </View>
+      </Layout>
+    </ListRow>
   )
 }
-
-const styles = StyleSheet.create({
-  page: { paddingHorizontal: gutter, paddingBottom: 40 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  todayLink: { height: 44, justifyContent: 'center' },
-  todayLinkText: { fontFamily: font.mono, fontSize: 12, letterSpacing: 1.7, textTransform: 'uppercase', color: color.text },
-  monthRow: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -2 },
-  cellWrap: { width: `${100 / 7}%`, paddingHorizontal: 2 },
-  weekday: { textAlign: 'center', fontFamily: font.mono, fontSize: 11, letterSpacing: 1.1, color: color.muted },
-  cell: {
-    aspectRatio: 1,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: color.cellLine,
-    paddingTop: 5,
-    paddingRight: 6,
-    alignItems: 'flex-end',
-    overflow: 'hidden',
-  },
-  cellSelected: { backgroundColor: color.white, borderColor: color.white },
-  cellToday: { borderColor: color.white },
-  cellNum: { fontFamily: font.mono, fontSize: 12, color: color.text },
-  attendBar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: color.accent },
-  detail: { marginTop: 28, paddingTop: 24, borderTopWidth: 1, borderTopColor: color.line, gap: 18 },
-  dayLabel: { fontFamily: font.mono, fontSize: 13, letterSpacing: 1.56, textTransform: 'uppercase', color: color.text },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: color.line,
-    borderRadius: 12,
-  },
-  cardMono: { fontFamily: font.mono, fontSize: 13, color: color.muted },
-  empty: { padding: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: color.lineStrong, borderRadius: 12 },
-  emptyText: { fontFamily: font.sans, fontSize: 15, color: color.muted },
-  classRow: {
-    minHeight: 60,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: color.line,
-  },
-  classTime: { fontFamily: font.mono, fontSize: 17, color: color.text },
-  classRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  classCount: { fontFamily: font.mono, fontSize: 13, color: color.muted },
-  classPill: {
-    height: 36,
-    minWidth: 44,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: color.lineStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  classPillOn: { backgroundColor: color.white, borderColor: color.white },
-  classPillText: { fontFamily: font.sansMedium, fontSize: 14, color: color.text },
-})

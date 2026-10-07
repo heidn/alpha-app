@@ -1,10 +1,10 @@
 import { useRef, useState, type RefObject } from 'react'
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native'
 import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler'
-import { color, font } from '../theme'
+import { color, font } from '../tokens'
 import { haptic } from './hooks'
 import { Check } from './icons'
-import { Grain } from './kit'
+import { Grain } from './Grain'
 
 const PERCENTS = Array.from({ length: 13 }, (_, i) => 100 - i * 5)
 
@@ -164,25 +164,25 @@ export function PercentTable({ weightAt, projectedAt, lastAt, todayPct, scrollRe
 
                 <Animated.View style={[styles.content, styles.overlay, { opacity: near }]}>
                   <View style={styles.rowLeft}>
-                    <Text style={[styles.pct, { color: color.bg }]}>{p}%</Text>
+                    <Text style={[styles.pct, { color: color.ink }]}>{p}%</Text>
                     {isToday && <Text style={styles.todayTag}>Today</Text>}
                   </View>
                   <View style={styles.values}>
                     <View style={styles.col}>
                       <Text style={styles.colLabel}>≈ Projected</Text>
-                      <Text style={[styles.weight, { color: color.bg, fontFamily: font.mono }]}>
-                        {projectedAt(p)} <Text style={[styles.unit, { color: color.mutedOnWhite }]}>lb</Text>
+                      <Text style={[styles.weight, { color: color.ink, fontFamily: font.mono }]}>
+                        {projectedAt(p)} <Text style={[styles.unit, { color: color['muted-ink'] }]}>lb</Text>
                       </Text>
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.col}>
                       <View style={styles.colLabelRow}>
-                        <Check size={10} width={3} stroke={color.mutedOnWhite} />
+                        <Check size={10} width={3} stroke={color['muted-ink']} />
                         <Text style={styles.colLabel}>Last {p}%</Text>
                       </View>
-                      <Text style={[styles.weight, { color: color.bg }]}>
+                      <Text style={[styles.weight, { color: color.ink }]}>
                         {last ?? '—'}{' '}
-                        {last !== undefined && <Text style={[styles.unit, { color: color.mutedOnWhite }]}>lb</Text>}
+                        {last !== undefined && <Text style={[styles.unit, { color: color['muted-ink'] }]}>lb</Text>}
                       </Text>
                     </View>
                   </View>
@@ -220,13 +220,13 @@ const styles = StyleSheet.create({
   },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  pct: { width: 44, fontFamily: font.mono, fontSize: 15, color: color.text },
-  todayTag: { fontFamily: font.sansSemi, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: color.accentOnWhite },
-  weight: { fontFamily: font.monoMedium, fontSize: 20, color: color.text },
+  pct: { width: 44, fontFamily: font.mono, fontSize: 15, color: color.fg },
+  todayTag: { fontFamily: font['sans-semibold'], fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: color['accent-ink'] },
+  weight: { fontFamily: font['mono-medium'], fontSize: 20, color: color.fg },
   unit: { fontFamily: font.mono, fontSize: 12, color: color.muted },
   values: { flexDirection: 'row', gap: 18 },
   col: { alignItems: 'flex-end', gap: 3 },
   colLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  colLabel: { fontFamily: font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: color.mutedOnWhite },
+  colLabel: { fontFamily: font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: color['muted-ink'] },
   divider: { width: 1, backgroundColor: '#D4D4D8' },
 })

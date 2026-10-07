@@ -3,8 +3,8 @@ import { tokenCache } from '@clerk/expo/token-cache'
 import { ConvexReactClient } from 'convex/react'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import type { ReactNode } from 'react'
-import { Platform, StyleSheet, Text, View } from 'react-native'
-import { color, font, gutter, type } from '../theme'
+import { Platform } from 'react-native'
+import { Layout, Text } from '../ui'
 import { clerkPublishableKey, convexUrl } from './config'
 
 const convex = convexUrl ? new ConvexReactClient(convexUrl, { unsavedChangesWarning: false }) : null
@@ -24,17 +24,12 @@ export function AuthProviders({ children }: { children: ReactNode }) {
 
 function MissingConfig() {
   return (
-    <View style={styles.root}>
-      <Text style={type.title}>Setup needed</Text>
-      <Text style={styles.body}>
+    <Layout className="flex-1 bg-bg justify-center p-5 gap-3">
+      <Text variant="title">Setup needed</Text>
+      <Text className="text-[16px] leading-[22px] text-muted">
         Missing Clerk or Convex keys. Add VITE_CLERK_PUBLISHABLE_KEY and VITE_CONVEX_URL to the repo-root .env.local (or
         EXPO_PUBLIC_* equivalents), then restart Expo.
       </Text>
-    </View>
+    </Layout>
   )
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg, justifyContent: 'center', padding: gutter, gap: 12 },
-  body: { fontFamily: font.sans, fontSize: 16, lineHeight: 22, color: color.muted },
-})

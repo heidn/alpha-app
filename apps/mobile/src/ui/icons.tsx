@@ -1,9 +1,9 @@
 import Svg, { Path, Rect } from 'react-native-svg'
-import { color } from '../theme'
+import { color } from '../tokens'
 
 type IconProps = { size?: number; stroke?: string; width?: number }
 
-function Line({ d, size = 18, stroke = color.text, width = 2 }: IconProps & { d: string[] }) {
+function Line({ d, size = 18, stroke = color.fg, width = 2 }: IconProps & { d: string[] }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round">
       {d.map((p) => (
@@ -41,7 +41,7 @@ export function Pencil(p: IconProps) {
   return <Line d={['M4 20h4L19 9l-4-4L4 16v4z', 'M13.5 6.5l4 4']} {...p} />
 }
 
-export function CalendarIcon({ size = 18, stroke = color.text }: IconProps) {
+export function CalendarIcon({ size = 18, stroke = color.fg }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <Rect x={3.5} y={5} width={17} height={15.5} rx={2} />
@@ -53,7 +53,7 @@ export function CalendarIcon({ size = 18, stroke = color.text }: IconProps) {
 }
 
 /** Two 1pt lines, 8pt apart. */
-export function MenuIcon({ stroke = color.text }: IconProps) {
+export function MenuIcon({ stroke = color.fg }: IconProps) {
   return (
     <Svg width={20} height={9} viewBox="0 0 20 9" fill="none" stroke={stroke} strokeWidth={1} strokeLinecap="round">
       <Path d="M0.5 0.5h19" />

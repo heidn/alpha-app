@@ -1,104 +1,105 @@
 import { useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable } from 'react-native'
 import { METCON_LABEL, metconLoad } from '../data/rules'
 import { useStore } from '../data/store'
 import type { LiftPart, MetconPart, WarmupItem } from '../data/types'
-import { color, type } from '../theme'
+import { cx } from './cx'
 import { ChevronDown } from './icons'
-import { SectionHeading } from './kit'
-import { workoutStyles as s } from './styles'
+import { Layout } from './Layout'
+import { Section } from './Section'
+import { Text } from './Text'
 
-// Section bodies shared by Today and Past day. `dim` = past day (text-2).
+// Workout section bodies shared by Today and Past day. `dim` = past day (fg-2).
 
 export function WarmupSection({ items, collapsible, dim }: { items: WarmupItem[]; collapsible?: boolean; dim?: boolean }) {
   const { movementName } = useStore()
   const [open, setOpen] = useState(true)
   return (
-    <View style={[s.section, { gap: 16 }]}>
-      {collapsible ? (
+    <Section heading={collapsible ? undefined : 'Warm-up'}>
+      {collapsible && (
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: open }}
           accessibilityLabel="Warm-up"
           onPress={() => setOpen((o) => !o)}
-          style={s.warmToggle}
+          className="h-11 -my-3 flex-row items-center justify-between"
         >
-          <SectionHeading>Warm-up</SectionHeading>
-          <View style={{ transform: [{ rotate: open ? '0deg' : '-90deg' }] }}>
+          <Text variant="heading">Warm-up</Text>
+          <Layout style={{ transform: [{ rotate: open ? '0deg' : '-90deg' }] }}>
             <ChevronDown />
-          </View>
+          </Layout>
         </Pressable>
-      ) : (
-        <SectionHeading>Warm-up</SectionHeading>
       )}
       {open && (
-        <View style={{ gap: 10 }}>
+        <Layout className="gap-2.5">
           {items.map((i, idx) => (
-            <View key={idx} style={s.warmRow}>
-              <Text style={s.warmQty}>{i.qty}</Text>
-              <Text style={[type.body, s.flex, dim && { color: color.text2 }]}>{movementName(i.movementId)}</Text>
-            </View>
+            <Layout key={idx} row className="gap-3.5">
+              <Text variant="mono" className="w-16 leading-[23px]">
+                {i.qty}
+              </Text>
+              <Text className={cx('flex-1', dim && 'text-fg-2')}>{movementName(i.movementId)}</Text>
+            </Layout>
           ))}
-        </View>
+        </Layout>
       )}
-    </View>
+    </Section>
   )
 }
 
 export function LiftTitle({ lift }: { lift: LiftPart }) {
   const { movementName } = useStore()
   return (
-    <View style={{ gap: 6, flexShrink: 1 }}>
-      <Text style={type.title}>{movementName(lift.movementId)}</Text>
-      <Text style={type.monoSub}>
+    <Layout className="gap-1.5 shrink">
+      <Text variant="title">{movementName(lift.movementId)}</Text>
+      <Text variant="mono">
         {lift.sets} × {lift.reps} @ {lift.percent}%
       </Text>
-    </View>
+    </Layout>
   )
 }
 
 export function MetconHeader({ metcon }: { metcon: MetconPart }) {
   const cap = metcon.timeCapSec ? ` · ${metcon.timeCapSec / 60} min` : ''
   return (
-    <View style={{ gap: 6 }}>
-      <SectionHeading>Metcon</SectionHeading>
-      <Text style={type.monoSub}>
+    <Layout className="gap-1.5">
+      <Text variant="heading" accessibilityRole="header">
+        Metcon
+      </Text>
+      <Text variant="mono">
         {METCON_LABEL[metcon.type]}
         {cap}
       </Text>
-    </View>
+    </Layout>
   )
 }
 
 export function MetconItems({ metcon, dim, compact }: { metcon: MetconPart; dim?: boolean; compact?: boolean }) {
   const { movementName, settings } = useStore()
   return (
-    <View>
+    <Layout className={cx(compact && 'border-t border-line')}>
       {metcon.items.map((item, idx) => {
         const load = metconLoad(item, settings.rxWeights)
-        const last = idx === metcon.items.length - 1
         if (compact) {
           return (
-            <View key={idx} style={[s.compactRow, idx === 0 && s.topLine]}>
-              <Text style={s.compactReps}>{item.reps ?? ''}</Text>
-              <Text style={[s.compactName, dim && { color: color.text2 }]} numberOfLines={2}>
+            <Layout key={idx} row className="items-baseline gap-3 py-2.5 border-b border-line">
+              <Text className="w-7 font-mono text-[17px]">{item.reps ?? ''}</Text>
+              <Text className={cx('flex-1 text-[16px]', dim && 'text-fg-2')} numberOfLines={2}>
                 {movementName(item.movementId)}
               </Text>
-              {load && <Text style={s.compactLoad}>{load}</Text>}
-            </View>
+              {load && <Text className="font-mono text-[12px] text-muted">{load}</Text>}
+            </Layout>
           )
         }
         return (
-          <View key={idx} style={[s.metRow, s.topLine, last && s.bottomLine]}>
-            {item.reps !== undefined && <Text style={s.metReps}>{item.reps}</Text>}
-            <View style={[s.flex, { gap: 4 }]}>
-              <Text style={[type.body, dim && { color: color.text2 }]}>{movementName(item.movementId)}</Text>
-              {load && <Text style={s.metLoad}>{load}</Text>}
-            </View>
-          </View>
+          <Layout key={idx} row className={cx('gap-3.5 py-3.5 border-t border-line', idx === metcon.items.length - 1 && 'border-b')}>
+            {item.reps !== undefined && <Text className="w-9 font-mono text-[22px] leading-[26px]">{item.reps}</Text>}
+            <Layout className="flex-1 gap-1">
+              <Text className={cx(dim && 'text-fg-2')}>{movementName(item.movementId)}</Text>
+              {load && <Text className="font-mono text-[13px] text-muted">{load}</Text>}
+            </Layout>
+          </Layout>
         )
       })}
-    </View>
+    </Layout>
   )
 }
-

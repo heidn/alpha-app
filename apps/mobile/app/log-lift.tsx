@@ -1,11 +1,8 @@
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
 import { useStore } from '../src/data/store'
 import type { LiftSet } from '../src/data/types'
-import { color, font } from '../src/theme'
-import { NotesField, SectionHeading, StepButton } from '../src/ui/kit'
-import { Sheet } from '../src/ui/Sheet'
+import { Button, Field, Layout, Screen, Stepper, Text } from '../src/ui'
 import { LiftTitle } from '../src/ui/workout'
 
 const EMPTY_BAR = 45
@@ -28,58 +25,38 @@ export default function LogLiftScreen() {
 
   if (!workout || !lift) return null
 
-  const bump = (i: number, d: number) =>
-    setSets((prev) => prev.map((s, j) => (j === i ? { ...s, weight: Math.max(0, s.weight + d) } : s)))
+  const bump = (i: number, d: number) => setSets((prev) => prev.map((s, j) => (j === i ? { ...s, weight: Math.max(0, s.weight + d) } : s)))
+  const save = () => {
+    store.saveResult(workout.id, { kind: 'lift', sets, notes: notes.trim() || undefined, loggedAt: store.today })
+    if (router.canGoBack()) router.back()
+    else router.replace('/')
+  }
 
   return (
-    <Sheet
-      onSave={() =>
-        store.saveResult(workout.id, { kind: 'lift', sets, notes: notes.trim() || undefined, loggedAt: store.today })
-      }
-    >
-      <View style={{ gap: 6, marginTop: 12 }}>
-        <SectionHeading>Lifting</SectionHeading>
+    <Screen header={{ nav: 'close', eyebrow: 'Lifting' }} footer={<Button label="Save" onPress={save} />}>
+      <Layout className="-mt-4">
         <LiftTitle lift={lift} />
-      </View>
+      </Layout>
 
-      <View style={styles.sets}>
+      <Layout className="mt-7 border-t border-line">
         {sets.map((set, i) => (
-          <View key={i} style={styles.setRow}>
-            <Text style={styles.setLabel}>
+          <Layout key={i} row center between className="py-2.5 border-b border-line">
+            <Text className="w-16 font-mono text-[17px] text-muted">
               {lift.sets} × {set.reps}
             </Text>
-            <View style={styles.stepper}>
-              <StepButton dir="down" label={`Decrease set ${i + 1} weight ${step} lb`} onPress={() => bump(i, -step)} />
-              <View style={styles.weight} accessibilityLabel={`Set ${i + 1}: ${set.weight} pounds`}>
-                <Text style={styles.weightValue}>{set.weight}</Text>
-                <Text style={styles.unit}>lb</Text>
-              </View>
-              <StepButton dir="up" label={`Increase set ${i + 1} weight ${step} lb`} onPress={() => bump(i, step)} />
-            </View>
-          </View>
+            <Stepper
+              variant="row"
+              value={String(set.weight)}
+              unit="lb"
+              name={`set ${i + 1} weight by ${step} lb`}
+              onDown={() => bump(i, -step)}
+              onUp={() => bump(i, step)}
+            />
+          </Layout>
         ))}
-      </View>
+      </Layout>
 
-      <View style={{ marginTop: 24 }}>
-        <NotesField value={notes} onChange={setNotes} />
-      </View>
-    </Sheet>
+      <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="How did it feel?" multiline className="mt-6" />
+    </Screen>
   )
 }
-
-const styles = StyleSheet.create({
-  sets: { marginTop: 28, borderTopWidth: 1, borderTopColor: color.line },
-  setRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: color.line,
-  },
-  setLabel: { width: 64, fontFamily: font.mono, fontSize: 17, color: color.muted },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  weight: { width: 92, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 4 },
-  weightValue: { fontFamily: font.monoMedium, fontSize: 30, lineHeight: 34, color: color.text },
-  unit: { fontFamily: font.mono, fontSize: 12, color: color.muted },
-})

@@ -1,20 +1,7 @@
 import { isClerkAPIResponseError, useSignIn, useSignUp } from '@clerk/expo'
 import { useState } from 'react'
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-  type TextInputProps,
-} from 'react-native'
-import { color, font, gutter, type } from '../theme'
-import { haptic, useTopInset } from '../ui/hooks'
+import { Platform, useWindowDimensions, View } from 'react-native'
+import { Button, Field, Layout, Screen, Text } from '../ui'
 
 // Custom flow on Clerk's Core 3 sign-in/sign-up resources. Adapts to whatever factors the
 // Clerk app has enabled: email code preferred, password if that's what's available.
@@ -61,7 +48,6 @@ function errorText(err: ClerkErr): string {
 export function SignInScreen() {
   const { signIn } = useSignIn()
   const { signUp } = useSignUp()
-  const top = useTopInset()
   const { width } = useWindowDimensions()
   const logoSize = Math.round(Math.min(width, 500) * 0.2)
 
@@ -194,193 +180,127 @@ export function SignInScreen() {
     setError('')
   }
 
+  const lede = 'text-muted'
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={[styles.page, { paddingTop: top + 30 }]} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.logo, { fontSize: logoSize, lineHeight: logoSize }]} accessibilityRole="header">
-          alpha
-        </Text>
+    <Screen>
+      <Text variant="logo" accessibilityRole="header" className="mt-[30px] -ml-[26px]" style={{ fontSize: logoSize, lineHeight: logoSize }}>
+        alpha
+      </Text>
 
-        <View style={styles.form}>
-          {step.kind === 'email' && (
-            <>
-              <Text style={styles.lede}>Sign in or create your account.</Text>
-              <Field
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                onSubmitEditing={submitEmail}
-                autoFocus
-              />
-              <Submit label="Continue" busy={busy} disabled={!email.includes('@')} onPress={submitEmail} />
-            </>
-          )}
+      <Layout className="mt-12 gap-[18px]">
+        {step.kind === 'email' && (
+          <>
+            <Text className={lede}>Sign in or create your account.</Text>
+            <Field
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              returnKeyType="go"
+              onSubmitEditing={submitEmail}
+              autoFocus
+            />
+            <Button variant="hero" label="Continue" busy={busy} disabled={!email.includes('@')} onPress={submitEmail} />
+          </>
+        )}
 
-          {step.kind === 'code' && (
-            <>
-              <Text style={styles.lede}>
-                We emailed a code to <Text style={{ color: color.text }}>{email.trim()}</Text>.
-              </Text>
-              <Field
-                label="Code"
-                value={code}
-                onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
-                keyboardType="number-pad"
-                autoComplete="one-time-code"
-                textContentType="oneTimeCode"
-                onSubmitEditing={() => submitCode(step.flow)}
-                autoFocus
-                mono
-              />
-              <Submit label="Verify" busy={busy} disabled={code.length < 6} onPress={() => submitCode(step.flow)} />
-              {step.flow === 'signIn' && signIn.supportedFirstFactors.some((f) => f.strategy === 'password') && (
-                <Link label="Use password instead" onPress={() => setStep({ kind: 'password', canUseCode: true })} />
-              )}
-            </>
-          )}
-
-          {step.kind === 'password' && (
-            <>
-              <Text style={styles.lede}>{email.trim()}</Text>
-              <Field
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="current-password"
-                textContentType="password"
-                onSubmitEditing={submitPassword}
-                autoFocus
-              />
-              <Submit label="Sign in" busy={busy} disabled={!password} onPress={submitPassword} />
-              {step.canUseCode && (
-                <Link
-                  label="Email me a code instead"
-                  onPress={() =>
-                    run(async () => {
-                      const { error: e } = await signIn.emailCode.sendCode()
-                      if (e) return void fail(e)
-                      setStep({ kind: 'code', flow: 'signIn' })
-                    })
-                  }
-                />
-              )}
-            </>
-          )}
-
-          {step.kind === 'newPassword' && (
-            <>
-              <Text style={styles.lede}>New here. Choose a password for {email.trim()}.</Text>
-              <Field
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="new-password"
-                textContentType="newPassword"
-                onSubmitEditing={submitNewPassword}
-                autoFocus
-              />
-              <Submit label="Continue" busy={busy} disabled={password.length < 8} onPress={submitNewPassword} />
-            </>
-          )}
-
-          {step.kind === 'names' && (
-            <>
-              <Text style={styles.lede}>What’s your name?</Text>
-              <Field label="First name" value={firstName} onChangeText={setFirstName} autoComplete="given-name" autoFocus />
-              <Field label="Last name" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
-              <Submit label="Continue" busy={busy} disabled={!firstName.trim() || !lastName.trim()} onPress={submitNames} />
-            </>
-          )}
-
-          {/* Clerk bot protection mounts its CAPTCHA here on web (nativeID becomes the DOM id). */}
-          {Platform.OS === 'web' && <View nativeID="clerk-captcha" />}
-
-          {!!notice && !error && <Text style={styles.lede}>{notice}</Text>}
-
-          {!!error && (
-            <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
-              {error}
+        {step.kind === 'code' && (
+          <>
+            <Text className={lede}>
+              We emailed a code to <Text className="text-fg">{email.trim()}</Text>.
             </Text>
-          )}
-          {step.kind !== 'email' && <Link label="Use a different email" onPress={restart} />}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Field
+              label="Code"
+              value={code}
+              onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              returnKeyType="go"
+              onSubmitEditing={() => submitCode(step.flow)}
+              autoFocus
+              mono
+            />
+            <Button variant="hero" label="Verify" busy={busy} disabled={code.length < 6} onPress={() => submitCode(step.flow)} />
+            {step.flow === 'signIn' && signIn.supportedFirstFactors.some((f) => f.strategy === 'password') && (
+              <Button variant="ghost" label="Use password instead" onPress={() => setStep({ kind: 'password', canUseCode: true })} />
+            )}
+          </>
+        )}
+
+        {step.kind === 'password' && (
+          <>
+            <Text className={lede}>{email.trim()}</Text>
+            <Field
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={submitPassword}
+              autoFocus
+            />
+            <Button variant="hero" label="Sign in" busy={busy} disabled={!password} onPress={submitPassword} />
+            {step.canUseCode && (
+              <Button
+                variant="ghost"
+                label="Email me a code instead"
+                onPress={() =>
+                  run(async () => {
+                    const { error: e } = await signIn.emailCode.sendCode()
+                    if (e) return void fail(e)
+                    setStep({ kind: 'code', flow: 'signIn' })
+                  })
+                }
+              />
+            )}
+          </>
+        )}
+
+        {step.kind === 'newPassword' && (
+          <>
+            <Text className={lede}>New here. Choose a password for {email.trim()}.</Text>
+            <Field
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="go"
+              onSubmitEditing={submitNewPassword}
+              autoFocus
+            />
+            <Button variant="hero" label="Continue" busy={busy} disabled={password.length < 8} onPress={submitNewPassword} />
+          </>
+        )}
+
+        {step.kind === 'names' && (
+          <>
+            <Text className={lede}>What’s your name?</Text>
+            <Field label="First name" value={firstName} onChangeText={setFirstName} autoComplete="given-name" autoFocus />
+            <Field label="Last name" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
+            <Button variant="hero" label="Continue" busy={busy} disabled={!firstName.trim() || !lastName.trim()} onPress={submitNames} />
+          </>
+        )}
+
+        {/* Clerk bot protection mounts its CAPTCHA here on web (nativeID becomes the DOM id). */}
+        {Platform.OS === 'web' && <View nativeID="clerk-captcha" />}
+
+        {!!notice && !error && <Text className={lede}>{notice}</Text>}
+
+        {!!error && (
+          <Text className="text-[15px] leading-[21px] text-accent" accessibilityRole="alert" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        )}
+        {step.kind !== 'email' && <Button variant="ghost" label="Use a different email" onPress={restart} />}
+      </Layout>
+    </Screen>
   )
 }
-
-function Field({ label, mono, ...props }: TextInputProps & { label: string; mono?: boolean }) {
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={type.monoLabel}>{label}</Text>
-      <TextInput
-        {...props}
-        accessibilityLabel={label}
-        placeholderTextColor={color.muted}
-        returnKeyType="go"
-        style={[styles.input, mono && styles.inputMono]}
-      />
-    </View>
-  )
-}
-
-function Submit({ label, busy, disabled, onPress }: { label: string; busy: boolean; disabled: boolean; onPress: () => void }) {
-  const off = busy || disabled
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: off, busy }}
-      disabled={off}
-      onPressIn={() => !off && haptic('medium')}
-      onPress={onPress}
-      style={({ pressed }) => [styles.submit, off && { opacity: 0.4 }, pressed && { transform: [{ scale: 0.97 }] }]}
-    >
-      {busy ? <ActivityIndicator color={color.bg} /> : <Text style={styles.submitText}>{label}</Text>}
-    </Pressable>
-  )
-}
-
-function Link({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.link}>
-      <Text style={styles.linkText}>{label}</Text>
-    </Pressable>
-  )
-}
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  page: { paddingHorizontal: gutter, paddingBottom: 40 },
-  logo: { marginLeft: -6 - gutter, fontFamily: font.radwave, color: color.text },
-  form: { marginTop: 48, gap: 18 },
-  lede: { fontFamily: font.sans, fontSize: 17, lineHeight: 23, color: color.muted },
-  input: {
-    height: 56,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: color.line,
-    borderRadius: 12,
-    backgroundColor: color.surface2,
-    color: color.text,
-    fontFamily: font.sans,
-    fontSize: 17,
-  },
-  inputMono: { fontFamily: font.monoMedium, fontSize: 24, letterSpacing: 8 },
-  submit: {
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: color.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitText: { fontFamily: font.radwave, fontSize: 22, letterSpacing: 0.5, color: color.bg },
-  error: { fontFamily: font.sans, fontSize: 15, lineHeight: 21, color: color.accent },
-  link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center' },
-  linkText: { fontFamily: font.sansMedium, fontSize: 15, color: color.text },
-})

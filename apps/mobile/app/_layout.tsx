@@ -1,3 +1,4 @@
+import '../global.css'
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono'
 import { SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold } from '@expo-google-fonts/space-grotesk'
 import { useFonts } from 'expo-font'
@@ -11,7 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProviders } from '../src/auth/AuthProviders'
 import { useStoreUser } from '../src/auth/useStoreUser'
 import { StoreProvider } from '../src/data/store'
-import { color } from '../src/theme'
+import { color } from '../src/tokens'
 
 const sheet: ComponentProps<typeof Stack.Screen>['options'] = {
   presentation: 'formSheet',

@@ -1,12 +1,9 @@
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
 import { METCON_LABEL, repsPerRound } from '../src/data/rules'
 import { useStore } from '../src/data/store'
 import type { Division, MetconPart, MetconScore } from '../src/data/types'
-import { color, font, type } from '../src/theme'
-import { NotesField, SectionHeading, Segmented, StepperCard } from '../src/ui/kit'
-import { Sheet } from '../src/ui/Sheet'
+import { Button, Field, Layout, Screen, Segmented, Stepper, Text } from '../src/ui'
 import { MetconItems } from '../src/ui/workout'
 
 const HINT: Record<MetconPart['type'], string> = {
@@ -45,34 +42,27 @@ export default function LogMetconScreen() {
 
   if (!workout || !metcon || !score) return null
 
+  const save = () => {
+    store.saveResult(workout.id, { kind: 'metcon', division, score, notes: notes.trim() || undefined, loggedAt: store.today })
+    if (router.canGoBack()) router.back()
+    else router.replace('/')
+  }
+
   return (
-    <Sheet
-      onSave={() =>
-        store.saveResult(workout.id, {
-          kind: 'metcon',
-          division,
-          score,
-          notes: notes.trim() || undefined,
-          loggedAt: store.today,
-        })
-      }
-    >
-      <View style={{ gap: 6, marginTop: 12 }}>
-        <SectionHeading>Metcon</SectionHeading>
-        <Text style={type.title}>
-          {METCON_LABEL[metcon.type]} <Text style={styles.hint}>{HINT[metcon.type]}</Text>
-        </Text>
-      </View>
+    <Screen header={{ nav: 'close', eyebrow: 'Metcon' }} footer={<Button label="Save" onPress={save} />}>
+      <Text variant="title" className="-mt-4">
+        {METCON_LABEL[metcon.type]} <Text variant="mono">{HINT[metcon.type]}</Text>
+      </Text>
 
-      <View style={{ marginTop: 18 }}>
+      <Layout className="mt-[18px]">
         <MetconItems metcon={metcon} compact />
-      </View>
+      </Layout>
 
-      <View style={{ marginTop: 24 }}>
+      <Layout className="mt-6">
         <ScoreInput metcon={metcon} score={score} onChange={setScore} />
-      </View>
+      </Layout>
 
-      <View style={{ marginTop: 20 }}>
+      <Layout className="mt-5">
         <Segmented
           label="Division"
           value={division}
@@ -82,45 +72,35 @@ export default function LogMetconScreen() {
             { value: 'scaled', label: 'Scaled' },
           ]}
         />
-      </View>
+      </Layout>
 
-      <View style={{ marginTop: 20 }}>
-        <NotesField value={notes} onChange={setNotes} />
-      </View>
-    </Sheet>
+      <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="How did it feel?" multiline className="mt-5" />
+    </Screen>
   )
 }
 
 /** Score input depends on metcon type (handoff §3). */
-function ScoreInput({
-  metcon,
-  score,
-  onChange,
-}: {
-  metcon: MetconPart
-  score: MetconScore
-  onChange: (s: MetconScore) => void
-}) {
+function ScoreInput({ metcon, score, onChange }: { metcon: MetconPart; score: MetconScore; onChange: (s: MetconScore) => void }) {
   switch (score.kind) {
     case 'amrap': {
       const maxReps = Math.max(0, repsPerRound(metcon) - 1)
       return (
-        <View style={styles.pair}>
-          <StepperCard
+        <Layout row gap={3}>
+          <Stepper
             label="Rounds"
             name="rounds"
             value={String(score.rounds)}
             onDown={() => onChange({ ...score, rounds: clamp(score.rounds - 1, 0, 99) })}
             onUp={() => onChange({ ...score, rounds: clamp(score.rounds + 1, 0, 99) })}
           />
-          <StepperCard
+          <Stepper
             label="+ Reps"
             name="reps"
             value={String(score.reps)}
             onDown={() => onChange({ ...score, reps: clamp(score.reps - 1, 0, maxReps) })}
             onUp={() => onChange({ ...score, reps: clamp(score.reps + 1, 0, maxReps) })}
           />
-        </View>
+        </Layout>
       )
     }
     case 'forTime': {
@@ -129,60 +109,46 @@ function ScoreInput({
       const cap = metcon.timeCapSec ?? 60 * 60
       const setSec = (v: number) => onChange({ kind: 'forTime', timeSec: clamp(v, 0, cap) })
       return (
-        <View style={{ gap: 12 }}>
+        <Layout gap={3}>
           <Segmented
             label="Finished or capped"
             value={capped ? 'cap' : 'done'}
-            onChange={(v) =>
-              onChange(v === 'cap' ? { kind: 'forTime', cappedReps: 0 } : { kind: 'forTime', timeSec: Math.round(cap * 0.75) })
-            }
+            onChange={(v) => onChange(v === 'cap' ? { kind: 'forTime', cappedReps: 0 } : { kind: 'forTime', timeSec: Math.round(cap * 0.75) })}
             options={[
               { value: 'done', label: 'Finished' },
               { value: 'cap', label: 'Hit the cap' },
             ]}
           />
           {capped ? (
-            <View style={styles.pair}>
-              <StepperCard
+            <Layout row gap={3}>
+              <Stepper
                 label="Reps at cap"
                 name="reps"
                 value={String(score.cappedReps)}
                 onDown={() => onChange({ kind: 'forTime', cappedReps: Math.max(0, (score.cappedReps ?? 0) - 1) })}
                 onUp={() => onChange({ kind: 'forTime', cappedReps: (score.cappedReps ?? 0) + 1 })}
               />
-            </View>
+            </Layout>
           ) : (
-            <View style={styles.pair}>
-              <StepperCard
-                label="Min"
-                name="minutes"
-                value={String(Math.floor(sec / 60))}
-                onDown={() => setSec(sec - 60)}
-                onUp={() => setSec(sec + 60)}
-              />
-              <StepperCard
-                label="Sec"
-                name="seconds"
-                value={String(sec % 60).padStart(2, '0')}
-                onDown={() => setSec(sec - 5)}
-                onUp={() => setSec(sec + 5)}
-              />
-            </View>
+            <Layout row gap={3}>
+              <Stepper label="Min" name="minutes" value={String(Math.floor(sec / 60))} onDown={() => setSec(sec - 60)} onUp={() => setSec(sec + 60)} />
+              <Stepper label="Sec" name="seconds" value={String(sec % 60).padStart(2, '0')} onDown={() => setSec(sec - 5)} onUp={() => setSec(sec + 5)} />
+            </Layout>
           )}
-        </View>
+        </Layout>
       )
     }
     case 'maxLoad':
       return (
-        <View style={styles.pair}>
-          <StepperCard
+        <Layout row gap={3}>
+          <Stepper
             label="Load · lb"
             name="pounds"
             value={String(score.load)}
             onDown={() => onChange({ kind: 'maxLoad', load: Math.max(0, score.load - 5) })}
             onUp={() => onChange({ kind: 'maxLoad', load: score.load + 5 })}
           />
-        </View>
+        </Layout>
       )
     case 'emom':
       return (
@@ -198,8 +164,3 @@ function ScoreInput({
       )
   }
 }
-
-const styles = StyleSheet.create({
-  hint: { fontFamily: font.mono, fontSize: 15, color: color.muted },
-  pair: { flexDirection: 'row', gap: 12 },
-})
