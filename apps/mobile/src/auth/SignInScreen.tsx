@@ -107,7 +107,8 @@ export function SignInScreen() {
     run(async () => {
       const identifier = email.trim().toLowerCase()
       const { error: e } = await signIn.create({ identifier })
-      if (errorCode(e) === 'form_identifier_not_found' || signIn.isTransferable) {
+      // Only an unknown email starts sign-up (isTransferable is for OAuth transfers).
+      if (errorCode(e) === 'form_identifier_not_found') {
         const { error: se } = await signUp.create({ emailAddress: identifier })
         if (se) return void fail(se)
         return advanceSignUp()
@@ -267,6 +268,9 @@ export function SignInScreen() {
               <Submit label="Continue" busy={busy} disabled={!firstName.trim() || !lastName.trim()} onPress={submitNames} />
             </>
           )}
+
+          {/* Clerk bot protection mounts its CAPTCHA here on web (nativeID becomes the DOM id). */}
+          {Platform.OS === 'web' && <View nativeID="clerk-captcha" />}
 
           {!!error && (
             <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
