@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as access from "../access.js";
 import type * as admin from "../admin.js";
+import type * as domain from "../domain.js";
 import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
@@ -20,7 +22,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  access: typeof access;
   admin: typeof admin;
+  domain: typeof domain;
   roles: typeof roles;
   seed: typeof seed;
   users: typeof users;
