@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { api } from '../../../convex/_generated/api'
+import { ClassesPanel } from '../classes/ClassesPanel.tsx'
 import { hrefFor } from '../shell/useRoute.ts'
 import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
@@ -9,16 +10,20 @@ import { GymForm, type GymValues } from './GymForm.tsx'
 import { MembersPanel } from './MembersPanel.tsx'
 import { StaffPanel } from './StaffPanel.tsx'
 
-const TABS = ['staff', 'members'] as const
+const TABS = ['classes', 'staff', 'members'] as const
 type Tab = (typeof TABS)[number]
-const TAB_LABEL: Record<Tab, string> = { staff: 'Staff', members: 'Members' }
+const TAB_LABEL: Record<Tab, string> = {
+  classes: 'Classes',
+  staff: 'Staff',
+  members: 'Members',
+}
 
 export function GymPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   const gym = useQuery(api.gyms.get, { gymId: id })
   const update = useMutation(api.gyms.update)
   const { run, pending, error, clearError } = useRun()
   const [editing, setEditing] = useState(false)
-  const [tab, setTab] = useState<Tab>('staff')
+  const [tab, setTab] = useState<Tab>('classes')
 
   if (gym === undefined) return <p className={ui.muted}>Loading gym…</p>
   if (gym === null) return <p className={ui.muted}>Gym not found.</p>
@@ -73,6 +78,7 @@ export function GymPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
         ))}
       </div>
 
+      {tab === 'classes' && <ClassesPanel gymId={gym._id} />}
       {tab === 'staff' && <StaffPanel gymId={gym._id} isAdmin={isAdmin} />}
       {tab === 'members' && <MembersPanel gymId={gym._id} />}
     </div>

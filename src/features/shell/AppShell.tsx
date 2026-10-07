@@ -3,6 +3,7 @@ import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { AdminPage } from '../admin/AdminPage.tsx'
 import { useStoreUser } from '../auth/useStoreUser.ts'
+import { ClassPage } from '../classes/ClassPage.tsx'
 import { GymPage } from '../gyms/GymPage.tsx'
 import { GymsPage } from '../gyms/GymsPage.tsx'
 import { HomePage } from '../home/HomePage.tsx'
@@ -76,6 +77,8 @@ export function AppShell() {
           <GymsPage isAdmin={isAdmin} />
         ) : route.name === 'gym' ? (
           <GymPage id={route.id} isAdmin={isAdmin} />
+        ) : route.name === 'class' ? (
+          <ClassPage id={route.id} />
         ) : null}
       </main>
     </div>

@@ -253,3 +253,10 @@
   font-size: 0.75rem;
   color: var(--text-muted);
 }
+
+.notice {
+  margin: 0;
+  padding: var(--s-2) var(--s-4);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
