@@ -1,2 +1,2 @@
 # joe
-- Branch joe/monorepo-mobile: apps/web + apps/mobile (Expo) layout, pushed for heidnick review. Next: Clerk+Convex in mobile (@clerk/clerk-expo), Expo Router, athlete Today screen.
+- Branch joe/mobile-today: handoff screens in apps/mobile on fixtures. Next: decide backend mapping (bookings, maxes, scores) + Clerk Expo sign-in, then swap store.tsx for Convex hooks. Needs Xcode for simulator.
