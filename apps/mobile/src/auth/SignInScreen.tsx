@@ -28,6 +28,25 @@ type Step =
 
 type ClerkErr = { message: string; code?: string; longMessage?: string } | null
 
+const CAPTCHA_TIMEOUT_MS = 20_000
+
+/** Clerk waits on its CAPTCHA (sign-up only); if Turnstile can't run, the request never settles. */
+function withTimeout<T>(p: Promise<T>, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(message)), CAPTCHA_TIMEOUT_MS)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e: unknown) => {
+        clearTimeout(t)
+        reject(e instanceof Error ? e : new Error(String(e)))
+      },
+    )
+  })
+}
+
 function errorCode(err: ClerkErr): string | undefined {
   if (!err) return undefined
   return isClerkAPIResponseError(err) ? err.errors[0]?.code : err.code
@@ -54,10 +73,12 @@ export function SignInScreen() {
   const [lastName, setLastName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   async function run(fn: () => Promise<void>) {
     setBusy(true)
     setError('')
+    setNotice('')
     try {
       await fn()
     } catch (e) {
@@ -85,6 +106,7 @@ export function SignInScreen() {
     if (signUp.unverifiedFields.includes('email_address')) {
       const { error: e } = await signUp.verifications.sendEmailCode()
       if (e) return void fail(e)
+      setNotice('')
       return setStep({ kind: 'code', flow: 'signUp' })
     }
     setError('Your account needs more details. Finish signing up on the web app.')
@@ -109,7 +131,13 @@ export function SignInScreen() {
       const { error: e } = await signIn.create({ identifier })
       // Only an unknown email starts sign-up (isTransferable is for OAuth transfers).
       if (errorCode(e) === 'form_identifier_not_found') {
-        const { error: se } = await signUp.create({ emailAddress: identifier })
+        setNotice(`No account for ${identifier} yet. Creating one…`)
+        const { error: se } = await withTimeout(
+          signUp.create({ emailAddress: identifier }),
+          Platform.OS === 'web'
+            ? 'Couldn’t verify you’re human. On the web, open the app at http://localhost:8081 (not an IP address), or try the phone app.'
+            : 'Couldn’t verify you’re human. Check your connection and try again.',
+        )
         if (se) return void fail(se)
         return advanceSignUp()
       }
@@ -160,6 +188,7 @@ export function SignInScreen() {
 
   const restart = () => {
     setStep({ kind: 'email' })
+    setNotice('')
     setCode('')
     setPassword('')
     setError('')
@@ -271,6 +300,8 @@ export function SignInScreen() {
 
           {/* Clerk bot protection mounts its CAPTCHA here on web (nativeID becomes the DOM id). */}
           {Platform.OS === 'web' && <View nativeID="clerk-captcha" />}
+
+          {!!notice && !error && <Text style={styles.lede}>{notice}</Text>}
 
           {!!error && (
             <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
