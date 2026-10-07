@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/clerk-react'
+import { useUser } from '@clerk/react'
 import type { Role } from '../../../convex/roles'
 import { RoleBadge } from '../admin/RoleBadge.tsx'
 import styles from './HomePage.module.css'

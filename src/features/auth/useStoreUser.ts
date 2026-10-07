@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useUser } from '@clerk/clerk-react'
+import { useUser } from '@clerk/react'
 import { useConvexAuth, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 
