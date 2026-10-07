@@ -5,8 +5,10 @@ import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
 import { ROLES, type Role } from '../../../convex/roles'
 import styles from './AdminPage.module.css'
+import { InvitePanel } from './InvitePanel.tsx'
 import { RoleBadge } from './RoleBadge.tsx'
 import { ROLE_LABEL } from './roleLabel.ts'
+import ui from '../ui/ui.module.css'
 
 const PAGE_SIZE = 50
 
@@ -29,6 +31,7 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<Id<'users'> | null>(null)
   const [saved, setSaved] = useState<Id<'users'> | null>(null)
+  const [adding, setAdding] = useState(false)
 
   const onChange = async (userId: Id<'users'>, role: Role) => {
     setError(null)
@@ -59,6 +62,11 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
           <h1>Users</h1>
           <p className={styles.sub}>Assign roles to control what people can see and do.</p>
         </div>
+        {!adding && (
+          <button type="button" className={ui.btnPrimary} onClick={() => setAdding(true)}>
+            Add user
+          </button>
+        )}
         <ul className={styles.stats} aria-label="Users by role">
           {ROLES.map((r) => (
             <li key={r}>
@@ -77,6 +85,8 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
           </button>
         </div>
       )}
+
+      <InvitePanel open={adding} onClose={() => setAdding(false)} />
 
       <section className={styles.card}>
         <div className={styles.toolbar}>

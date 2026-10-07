@@ -1,6 +1,7 @@
 import { ConvexError } from 'convex/values'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { claimInvites, normalizeEmail } from './classMembers'
+import { claimRoleInvite } from './invites'
 import { roleOf, type Role } from './roles'
 
 export async function getCurrentUser(ctx: QueryCtx) {
@@ -47,6 +48,8 @@ export const store = mutation({
     }
     // Class invites wait for this email; claim them in the same transaction.
     if (fields.email) await claimInvites(ctx, userId, fields.email)
+    // Roles are privileges: only claim for a verified email (needs `email_verified` in the session token).
+    if (fields.email && identity.emailVerified === true) await claimRoleInvite(ctx, userId, fields.email)
     return userId
   },
 })
