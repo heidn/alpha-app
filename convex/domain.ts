@@ -17,6 +17,22 @@ export const scoreFieldV = v.union(
 )
 export const sortV = v.union(v.literal('asc'), v.literal('desc'))
 
+// Which score input the athlete app shows (mobile handoff §3). Absent = infer from fields.
+export const scoreKindV = v.union(
+  v.literal('lift'), // reps + weight per set
+  v.literal('amrap'), // rounds + reps
+  v.literal('forTime'), // time, or reps when capped
+  v.literal('emom'), // done / not done
+  v.literal('maxLoad'), // heaviest weight
+  v.literal('other'),
+)
+
+export const bookingStatusV = v.union(v.literal('booked'), v.literal('signedIn'))
+export const rxWeightsV = v.union(v.literal('heavy'), v.literal('light'))
+export const plateIncrementV = v.union(v.literal(5), v.literal(2.5))
+// tested = coach-run 1RM test; imported = carried over from the old app; logged = derived from a memberLog single.
+export const maxSourceV = v.union(v.literal('logged'), v.literal('tested'), v.literal('imported'))
+
 // Present = members log this item; absent = display-only.
 export const scoreV = v.object({ scoreTypeId: v.id('scoreTypes'), title: v.string() })
 
@@ -48,6 +64,7 @@ export const programSectionV = v.object({
   sectionId: v.id('sections'),
   notes: v.optional(v.string()),
   score: v.optional(scoreV),
+  timeCapSec: v.optional(v.number()), // AMRAP length / For Time cap
   exercises: v.array(programExerciseV),
 })
 
@@ -61,6 +78,7 @@ export const memberSetV = v.object({
   rounds: v.optional(v.number()),
   distance: v.optional(v.number()),
   done: v.optional(v.boolean()),
+  capped: v.optional(v.boolean()), // For Time: hit the cap; `reps` = reps completed
 })
 
 export type ScoreField = Infer<typeof scoreFieldV>

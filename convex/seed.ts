@@ -33,28 +33,34 @@ export const testUsers = internalMutation({
 })
 
 const SCORE_TYPES: Omit<Doc<'scoreTypes'>, '_id' | '_creationTime'>[] = [
-  { name: 'Weight per set', fields: ['reps', 'weight'], perSet: true, sort: 'desc' },
-  { name: 'For Time', fields: ['timeSeconds'], perSet: false, sort: 'asc' },
-  { name: 'AMRAP', fields: ['rounds', 'reps'], perSet: false, sort: 'desc' },
-  { name: 'Each Round', fields: ['timeSeconds'], perSet: true, sort: 'asc' },
-  { name: 'Checkmark', fields: ['done'], perSet: false, sort: 'desc' },
-  { name: 'Distance', fields: ['distance'], perSet: false, sort: 'desc' },
+  { name: 'Weight per set', fields: ['reps', 'weight'], perSet: true, sort: 'desc', kind: 'lift' },
+  { name: 'For Time', fields: ['timeSeconds'], perSet: false, sort: 'asc', kind: 'forTime' },
+  { name: 'AMRAP', fields: ['rounds', 'reps'], perSet: false, sort: 'desc', kind: 'amrap' },
+  { name: 'Each Round', fields: ['timeSeconds'], perSet: true, sort: 'asc', kind: 'other' },
+  { name: 'Checkmark', fields: ['done'], perSet: false, sort: 'desc', kind: 'emom' },
+  { name: 'Distance', fields: ['distance'], perSet: false, sort: 'desc', kind: 'other' },
+  { name: 'Max load', fields: ['weight'], perSet: false, sort: 'desc', kind: 'maxLoad' },
 ]
 
-// `npx convex run seed:scoreTypes` (idempotent)
+// `npx convex run seed:scoreTypes` (idempotent; also backfills `kind` on existing rows)
 export const scoreTypes = internalMutation({
   args: {},
   handler: async (ctx) => {
     let inserted = 0
+    let backfilled = 0
     for (const s of SCORE_TYPES) {
       const existing = await ctx.db
         .query('scoreTypes')
         .withIndex('by_name', (q) => q.eq('name', s.name))
         .first()
-      if (existing) continue
-      await ctx.db.insert('scoreTypes', s)
-      inserted++
+      if (!existing) {
+        await ctx.db.insert('scoreTypes', s)
+        inserted++
+      } else if (existing.kind === undefined && s.kind !== undefined) {
+        await ctx.db.patch(existing._id, { kind: s.kind })
+        backfilled++
+      }
     }
-    return { inserted }
+    return { inserted, backfilled }
   },
 })
