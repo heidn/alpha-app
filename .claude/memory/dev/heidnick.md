@@ -1,5 +1,5 @@
 # heidnick
-- Branches (stacked, unmerged): wod-schema → wod-gyms → wod-classes → wod-library → wod-workouts; chore/deps-clerk off main. Merge order: clerk, then wod-* in order.
-- New-branch pushes returned GitHub 500 on 2026-10-07; retry. Merging to main needs human (auto-mode blocks).
-- Not visually checked in browser (needs Clerk sign-in). Check light/dark + 360px.
-- Convex identity lacks name/email: add claims in Clerk session token — required for invite claim.
+- Open: PR #7 (Clerk) → then #8 (library + workouts, stacked on #7). #5/#6 merged. Merge needs a human (auto mode blocks merges).
+- Not clicked through in browser yet (check light/dark + 360px).
+- Clerk session token needs `name`/`email` claims (Dashboard → Sessions → Customize session token) for user names + invite claim.
+- Next: athlete home (`workouts.myDay`), result logging + leaderboard (memberLogs mutations).
