@@ -1,3 +1,0 @@
-import type { Role } from '../../../convex/roles'
-
-export const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', coach: 'Coach', athlete: 'Athlete' }
