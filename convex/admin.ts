@@ -17,6 +17,7 @@ export const listUsers = query({
         name: u.name,
         email: u.email,
         role: roleOf(u),
+        signedIn: !!u.tokenIdentifier, // false = imported athlete, not claimed yet
       })),
     }
   },

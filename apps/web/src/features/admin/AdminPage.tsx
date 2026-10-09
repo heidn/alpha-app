@@ -131,6 +131,7 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
                             <div className={styles.name}>
                               {u.name}
                               {isSelf && <span className={styles.you}>You</span>}
+                              {!u.signedIn && <span className={styles.you}>Not signed in yet</span>}
                             </div>
                             <div className={styles.email}>{u.email ?? 'No email'}</div>
                           </div>

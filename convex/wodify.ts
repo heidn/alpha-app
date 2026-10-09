@@ -1,0 +1,154 @@
+import type { MemberSet, ScoreField } from './domain'
+
+// Pure Wodify parsing (no server imports): result strings -> sets, result types -> score types.
+
+type SetFields = Omit<MemberSet, 'setNumber'>
+type WeightUnit = 'lb' | 'kg'
+type DistanceUnit = 'm' | 'km' | 'mi'
+
+export const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase()
+
+// Program item key of an imported component, stable across re-imports.
+export const itemKey = (component: string) => `wodify:${norm(component)}`
+
+const num = (s: string) => Number(s.replace(/,/g, ''))
+const weightUnit = (u: string): WeightUnit => (u.toLowerCase().startsWith('kg') ? 'kg' : 'lb')
+const distanceUnit = (u: string): DistanceUnit =>
+  /^mi/i.test(u) ? 'mi' : /^k/i.test(u) ? 'km' : 'm'
+// Units we don't store, converted to meters.
+const TO_METERS: Record<string, number> = { f: 0.3048, y: 0.9144 }
+
+// "3:49", "1:24.8", "1:02:03" -> seconds
+const timeSeconds = (s: string): number | undefined => {
+  const m = /^(?:(\d+):)?(\d+):(\d{1,2}(?:\.\d+)?)$/.exec(s)
+  if (!m) return undefined
+  return Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3])
+}
+
+type Parsed = { sets: SetFields[]; unit?: WeightUnit | DistanceUnit }
+
+// One "Fully Formatted Result" cell. null = format we don't know yet.
+export function parseResult(raw: string): Parsed | null {
+  const s = raw.trim()
+  let m: RegExpExecArray | null
+  if ((m = /^(\d+) x (\d+) @ ([\d.,]+) (lbs?|kgs?)$/i.exec(s))) {
+    const set = { reps: num(m[2]), weight: num(m[3]) }
+    return {
+      sets: Array.from({ length: Math.max(1, num(m[1])) }, () => ({ ...set })),
+      unit: weightUnit(m[4]),
+    }
+  }
+  if (/^\d+ Reps? @ /i.test(s)) {
+    const sets: SetFields[] = []
+    let unit: WeightUnit | undefined
+    for (const part of s.split(/,\s*/)) {
+      const p = /^(\d+) Reps? @ ([\d.,]+) (lbs?|kgs?)$/i.exec(part)
+      if (!p) return null
+      sets.push({ reps: num(p[1]), weight: num(p[2]) })
+      unit = weightUnit(p[3])
+    }
+    return { sets, unit }
+  }
+  const t = timeSeconds(s)
+  if (t !== undefined) return { sets: [{ timeSeconds: t }] }
+  if ((m = /^(\d+) \+ (\d+)$/.exec(s))) return { sets: [{ rounds: num(m[1]), reps: num(m[2]) }] }
+  if ((m = /^([\d,]+) Rounds?$/i.exec(s))) return { sets: [{ rounds: num(m[1]) }] }
+  if ((m = /^([\d,]+)(?: Total)? Reps?$/i.exec(s))) return { sets: [{ reps: num(m[1]) }] }
+  if ((m = /^([\d.,]+)(?: Total)? Cal(?:orie)?s?$/i.exec(s)))
+    return { sets: [{ calories: num(m[1]) }] }
+  if ((m = /^([\d.,]+)(?: Total)? (meters?|m|miles?|mi|km|kilometers?)$/i.exec(s))) {
+    return { sets: [{ distance: num(m[1]) }], unit: distanceUnit(m[2]) }
+  }
+  if ((m = /^([\d.,]+)(?: Total)? (feet|foot|ft|yards?|yds?)$/i.exec(s))) {
+    const meters = num(m[1]) * TO_METERS[m[2][0].toLowerCase()]
+    return { sets: [{ distance: Math.round(meters * 10) / 10 }], unit: 'm' }
+  }
+  if ((m = /^([\d.,]+) (lbs?|kgs?)$/i.exec(s)))
+    return { sets: [{ weight: num(m[1]) }], unit: weightUnit(m[2]) }
+  if (/^complete$/i.test(s)) return { sets: [{ done: true }] }
+  return null
+}
+
+// All rows of one result -> numbered sets. Mixed units fail (needs a human).
+// Blank rows are dropped: Wodify "Each Round" exports often put the total on one row, rest empty.
+export function parseResults(results: string[]) {
+  const sets: MemberSet[] = []
+  const warnings: string[] = []
+  let unit: WeightUnit | DistanceUnit | undefined
+  for (const r of results.filter((x) => x.trim())) {
+    const p = parseResult(r)
+    if (!p) {
+      warnings.push(`Can't read result "${r}"`)
+      continue
+    }
+    if (p.unit && unit && p.unit !== unit) warnings.push(`Mixed units in "${r}"`)
+    unit = p.unit ?? unit
+    for (const s of p.sets) sets.push({ setNumber: sets.length + 1, ...s })
+  }
+  return { sets, unit, warnings }
+}
+
+// Leaderboard metric; direction comes from the score type's `sort`.
+export function sortMetric(sets: MemberSet[]): number | undefined {
+  const sum = (k: 'timeSeconds' | 'reps' | 'distance' | 'calories') =>
+    sets.reduce((a, s) => a + (s[k] ?? 0), 0)
+  const weights = sets.flatMap((s) => (s.weight === undefined ? [] : [s.weight]))
+  if (weights.length) return Math.max(...weights)
+  if (sets.some((s) => s.timeSeconds !== undefined)) return sum('timeSeconds')
+  if (sets.some((s) => s.rounds !== undefined)) {
+    return sets.reduce((a, s) => a + (s.rounds ?? 0) * 1000 + (s.reps ?? 0), 0)
+  }
+  if (sets.some((s) => s.reps !== undefined)) return sum('reps')
+  if (sets.some((s) => s.distance !== undefined)) return sum('distance')
+  if (sets.some((s) => s.calories !== undefined)) return sum('calories')
+  if (sets.some((s) => s.done)) return 1
+  return undefined
+}
+
+// Score types an import can need; created by wodifyImport.prepare when missing.
+// Names match seed.ts where they overlap.
+export const SCORE_TYPES = {
+  'For Time': { fields: ['timeSeconds'], perSet: false, sort: 'asc' },
+  AMRAP: { fields: ['rounds', 'reps'], perSet: false, sort: 'desc' },
+  'Each Round': { fields: ['timeSeconds'], perSet: true, sort: 'asc' },
+  'Reps per round': { fields: ['reps'], perSet: true, sort: 'desc' },
+  'Calories per round': { fields: ['calories'], perSet: true, sort: 'desc' },
+  'Distance per round': { fields: ['distance'], perSet: true, sort: 'desc' },
+  Checkmark: { fields: ['done'], perSet: false, sort: 'desc' },
+  Distance: { fields: ['distance'], perSet: false, sort: 'desc' },
+  Calories: { fields: ['calories'], perSet: false, sort: 'desc' },
+  'Weight per set': { fields: ['reps', 'weight'], perSet: true, sort: 'desc' },
+} as const satisfies Record<
+  string,
+  { fields: ScoreField[]; perSet: boolean; sort: 'asc' | 'desc' }
+>
+export type ScoreTypeName = keyof typeof SCORE_TYPES
+export const isScoreTypeName = (s: string): s is ScoreTypeName =>
+  Object.prototype.hasOwnProperty.call(SCORE_TYPES, s)
+
+// One athlete's result -> score type. "Each Round" is decided by what was logged
+// (Wodify's "N rounds for reps|calories|distance|time" scheme isn't in the export).
+export function scoreTypeFor(resultType: string, results: string[]): ScoreTypeName | undefined {
+  const t = norm(resultType)
+  if (t.startsWith('time')) return 'For Time' // incl. "Time ↓ shorter is better" (mis-encoded "?")
+  if (t.startsWith('amrap')) return 'AMRAP'
+  if (t === 'checkmark') return 'Checkmark'
+  if (t === 'distance') return 'Distance'
+  if (t === 'calories') return 'Calories'
+  if (t === 'weight') return 'Weight per set'
+  if (t !== 'each round') return undefined
+  const sets = parseResults(results).sets
+  if (sets.some((x) => x.timeSeconds !== undefined)) return 'Each Round'
+  if (sets.some((x) => x.calories !== undefined)) return 'Calories per round'
+  if (sets.some((x) => x.distance !== undefined)) return 'Distance per round'
+  return 'Reps per round'
+}
+
+export const stripHtml = (s: string) =>
+  s
+    .replace(/<br\s*\/?>|<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
