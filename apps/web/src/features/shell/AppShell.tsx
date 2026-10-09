@@ -8,6 +8,7 @@ import { GymPage } from '../gyms/GymPage.tsx'
 import { GymsPage } from '../gyms/GymsPage.tsx'
 import { HomePage } from '../home/HomePage.tsx'
 import { WodifyImportPage } from '../imports/WodifyImportPage.tsx'
+import { LeaderboardPage } from '../leaderboard/LeaderboardPage.tsx'
 import { LibraryPage } from '../library/LibraryPage.tsx'
 import { OnboardingPage } from '../onboarding/OnboardingPage.tsx'
 import { WorkoutEditorPage } from '../workouts/WorkoutEditorPage.tsx'
@@ -26,6 +27,7 @@ const SECTION: Record<Route['name'], Route['name']> = {
   workouts: 'workouts',
   workout: 'workouts',
   imports: 'imports',
+  leaderboard: 'leaderboard',
 }
 
 export function AppShell() {
@@ -39,6 +41,7 @@ export function AppShell() {
     { route: { name: 'home' }, label: 'Home', show: true },
     { route: { name: 'gyms' }, label: 'Gyms', show: isStaff },
     { route: { name: 'workouts' }, label: 'Workouts', show: isStaff },
+    { route: { name: 'leaderboard' }, label: 'Leaderboard', show: isStaff },
     { route: { name: 'library' }, label: 'Library', show: isStaff },
     { route: { name: 'admin' }, label: 'Users', show: isAdmin },
     { route: { name: 'imports' }, label: 'Imports', show: isAdmin },
@@ -98,6 +101,8 @@ export function AppShell() {
           <WorkoutsPage />
         ) : route.name === 'workout' ? (
           <WorkoutEditorPage id={route.id} />
+        ) : route.name === 'leaderboard' ? (
+          <LeaderboardPage />
         ) : route.name === 'imports' ? (
           <WodifyImportPage />
         ) : null}

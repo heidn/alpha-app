@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from 'convex/react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
+import { useClassPick } from '../classes/useClassPick.ts'
 import { hrefFor, navigate } from '../shell/useRoute.ts'
 import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
@@ -9,35 +10,10 @@ import { useRun } from '../ui/useRun.ts'
 import { isoDate, weekDays } from './program.ts'
 import styles from './WorkoutsPage.module.css'
 
-const PICK_KEY = 'workouts.pick'
-
-function readPick(): { gymId?: string; classId?: string } {
-  try {
-    return JSON.parse(localStorage.getItem(PICK_KEY) ?? '{}') as {
-      gymId?: string
-      classId?: string
-    }
-  } catch {
-    return {}
-  }
-}
-
 export function WorkoutsPage() {
-  const gyms = useQuery(api.gyms.list)
-  const [pick, setPick] = useState(readPick)
-  const gym = gyms?.find((g) => g._id === pick.gymId) ?? gyms?.[0]
-  const classes = useQuery(api.classes.listByGym, gym ? { gymId: gym._id } : 'skip')
-  const cls = classes?.find((c) => c._id === pick.classId) ?? classes?.[0]
+  const { gyms, gym, classes, cls, loading, pickGym, pickClass } = useClassPick()
   const [offset, setOffset] = useState(0)
   const [now] = useState(() => new Date())
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PICK_KEY, JSON.stringify(pick))
-    } catch {
-      // storage unavailable: selection just isn't remembered
-    }
-  }, [pick])
 
   const days = weekDays(now, offset)
   const range = { from: isoDate(days[0]), to: isoDate(days[6]) }
@@ -59,7 +35,7 @@ export function WorkoutsPage() {
             Gym
             <select
               value={gym?._id ?? ''}
-              onChange={(e) => setPick({ gymId: e.target.value })}
+              onChange={(e) => pickGym(e.target.value)}
               disabled={!gyms?.length}
             >
               {gyms?.map((g) => (
@@ -73,7 +49,7 @@ export function WorkoutsPage() {
             Class
             <select
               value={cls?._id ?? ''}
-              onChange={(e) => setPick({ ...pick, gymId: gym?._id, classId: e.target.value })}
+              onChange={(e) => pickClass(e.target.value)}
               disabled={!classes?.length}
             >
               {classes?.map((c) => (
@@ -84,7 +60,7 @@ export function WorkoutsPage() {
             </select>
           </label>
         </div>
-        {gyms === undefined || (gym && classes === undefined) ? (
+        {loading ? (
           <p className={ui.empty}>Loading…</p>
         ) : !gym ? (
           <p className={ui.empty}>No gyms yet. Create one under Gyms.</p>
