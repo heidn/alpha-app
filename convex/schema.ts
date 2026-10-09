@@ -83,6 +83,7 @@ export default defineSchema({
     classId: v.id('classes'),
     date: v.string(), // "2026-10-07", gym local time
     status: bookingStatusV,
+    source: v.optional(sourceV), // imported attendance; removeImportedVisits deletes these
   })
     .index('by_user_date', ['userId', 'date'])
     .index('by_class_date', ['classId', 'date']),

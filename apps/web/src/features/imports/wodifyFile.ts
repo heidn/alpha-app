@@ -1,7 +1,14 @@
-import { norm, scoreTypeFor, type ScoreTypeName } from '../../../../../convex/wodify'
+import {
+  isEmptyScore,
+  norm,
+  parseResults,
+  scoreTypeFor,
+  type ScoreTypeName,
+} from '../../../../../convex/wodify'
 
 // Wodify performance results export (JSON, whole gym) -> what convex/wodifyImport.ts upserts:
-// athletes, the programmed days (one scored section per component) and each athlete's results.
+// athletes, the programmed days (one scored section per component), each athlete's results, and
+// visits (athlete + day attended, including days with no score).
 
 export type ImportAthlete = { wodifyId: string; name: string }
 export type ImportComponent = { name: string; description: string; scoreType: ScoreTypeName }
@@ -14,11 +21,14 @@ export type ImportLog = {
   notes?: string
   results: string[]
 }
+export type ImportVisit = { wodifyId: string; date: string }
 export type ParsedExport = {
   athletes: ImportAthlete[]
   days: ImportDay[]
   logs: ImportLog[]
+  visits: ImportVisit[]
   rowCount: number
+  empty: number // blank/zero results: kept as visits only
   skipped: number // results whose score type we can't tell
   from: string
   to: string
@@ -119,10 +129,17 @@ export function parseWodifyJson(data: unknown): ParsedExport {
 
   const days = new Map<string, Map<string, Tally>>()
   let skipped = 0
+  let empty = 0
   const out: ImportLog[] = []
+  const visits = new Map<string, ImportVisit>()
   for (const l of logs.values()) {
+    visits.set(`${l.wodifyId}|${l.date}`, { wodifyId: l.wodifyId, date: l.date })
+    if (isEmptyScore(parseResults(l.results).sets)) {
+      empty++
+      continue
+    }
     const scoreType = scoreTypeFor(l.resultType, l.results)
-    if (!scoreType || !l.results.some((x) => x.trim())) {
+    if (!scoreType) {
       skipped++
       continue
     }
@@ -165,7 +182,9 @@ export function parseWodifyJson(data: unknown): ParsedExport {
     athletes: [...athletes.values()].sort((a, b) => a.name.localeCompare(b.name)),
     days: dayList,
     logs: out,
+    visits: [...visits.values()],
     rowCount: data.length,
+    empty,
     skipped,
     from: dayList[0]?.date ?? '',
     to: dayList[dayList.length - 1]?.date ?? '',
