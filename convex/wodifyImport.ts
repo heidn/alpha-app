@@ -10,9 +10,12 @@ import {
   itemKey,
   norm,
   parseFormat,
+  parseRepScheme,
   parseResults,
+  sameData,
   SCORE_TYPES,
   sortMetric,
+  STRENGTH_KEY,
   stripHtml,
   totalSet,
   type ScoreTypeName,
@@ -23,11 +26,33 @@ import {
 // can be re-run (or resumed after a failure) without duplicating anything. A gym's history can't
 // fit one transaction, so this is deliberately chunked rather than one mutation.
 
-const SECTION = 'Metcon'
-const MAX = { athletes: 100, days: 50, logs: 200, visits: 200, sections: 20 }
+const SECTION = { metcon: 'Metcon', strength: 'Strength' } as const
+const MAX = { athletes: 100, days: 50, logs: 200, visits: 200, sections: 20, exercises: 200 }
 
 function limit(n: number, max: number, what: string) {
   if (n > max) throw new ConvexError(`Send at most ${max} ${what} at a time`)
+}
+
+const sectionByTitle = (ctx: MutationCtx, title: string) =>
+  ctx.db
+    .query('sections')
+    .withIndex('by_title', (q) => q.eq('title', title))
+    .first()
+
+const exerciseByName = (ctx: MutationCtx, name: string) =>
+  ctx.db
+    .query('exercises')
+    .withIndex('by_name', (q) => q.eq('name', name))
+    .first()
+
+// A program item by key: a section, or an exercise inside one.
+function findItem(program: ProgramSection[], key: string) {
+  for (const s of program) {
+    if (s.key === key) return { score: s.score, exerciseId: undefined }
+    const e = s.exercises.find((x) => x.key === key)
+    if (e) return { score: e.score, exerciseId: e.exerciseId }
+  }
+  return undefined
 }
 
 async function scoreTypeIds(ctx: MutationCtx) {
@@ -45,17 +70,21 @@ async function scoreTypeIds(ctx: MutationCtx) {
   }
 }
 
-// Library rows the import points at: the Metcon section and the score types it uses.
+// Library rows the import points at: the Metcon/Strength sections, the score types it uses, and
+// one exercise per lift name (a complex like "Clean + Jerk" is its own exercise).
 export const prepare = mutation({
-  args: { scoreTypes: v.array(v.string()) },
-  handler: async (ctx, { scoreTypes }) => {
+  args: { scoreTypes: v.array(v.string()), exercises: v.optional(v.array(v.string())) },
+  handler: async (ctx, { scoreTypes, exercises = [] }) => {
     await requireRole(ctx, 'admin')
     limit(scoreTypes.length, Object.keys(SCORE_TYPES).length, 'score types')
-    const section = await ctx.db
-      .query('sections')
-      .withIndex('by_title', (q) => q.eq('title', SECTION))
-      .first()
-    if (!section) await ctx.db.insert('sections', { title: SECTION })
+    limit(exercises.length, MAX.exercises, 'exercises')
+    for (const title of Object.values(SECTION)) {
+      if (!(await sectionByTitle(ctx, title))) await ctx.db.insert('sections', { title })
+    }
+    for (const raw of new Set(exercises)) {
+      const name = raw.trim().slice(0, 120)
+      if (name && !(await exerciseByName(ctx, name))) await ctx.db.insert('exercises', { name })
+    }
     for (const name of new Set(scoreTypes)) {
       if (!isScoreTypeName(name)) throw new ConvexError(`Unknown score type "${name}"`)
       const existing = await ctx.db
@@ -145,7 +174,7 @@ const sectionFor = (
 }
 
 // One workout per class + date. Imported days are rebuilt from the file; coach-made days only
-// gain the components they're missing.
+// gain the components they're missing. A day's lifts form one Strength section, kept first.
 export const upsertWorkouts = mutation({
   args: {
     classId: v.id('classes'),
@@ -154,7 +183,13 @@ export const upsertWorkouts = mutation({
         date: v.string(),
         title: v.string(),
         components: v.array(
-          v.object({ name: v.string(), description: v.string(), scoreType: v.string() }),
+          v.object({
+            name: v.string(),
+            kind: v.optional(v.union(v.literal('metcon'), v.literal('lift'))),
+            description: v.string(),
+            repScheme: v.optional(v.string()),
+            scoreType: v.string(),
+          }),
         ),
       }),
     ),
@@ -163,22 +198,39 @@ export const upsertWorkouts = mutation({
     await requireRole(ctx, 'admin')
     limit(days.length, MAX.days, 'days')
     if (!(await ctx.db.get(classId))) throw new ConvexError('Class not found')
-    const section = await ctx.db
-      .query('sections')
-      .withIndex('by_title', (q) => q.eq('title', SECTION))
-      .first()
-    if (!section) throw new ConvexError('Metcon section is missing: start the import again')
+    const metcon = await sectionByTitle(ctx, SECTION.metcon)
+    const strength = await sectionByTitle(ctx, SECTION.strength)
+    if (!metcon || !strength) throw new ConvexError('Library sections are missing: start the import again')
     const scoreTypeId = await scoreTypeIds(ctx)
+    const exerciseIds = new Map<string, Id<'exercises'>>()
+    const exerciseId = async (name: string) => {
+      if (!exerciseIds.has(name)) {
+        const e = await exerciseByName(ctx, name)
+        if (!e) throw new ConvexError(`Exercise "${name}" is missing: start the import again`)
+        exerciseIds.set(name, e._id)
+      }
+      return exerciseIds.get(name)!
+    }
     const out: { date: string; workoutId: Id<'workouts'> }[] = []
     let created = 0
     let updated = 0
     for (const day of days) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date)) throw new ConvexError(`Bad date "${day.date}"`)
       const sections: ProgramSection[] = []
+      const lifts: ProgramSection['exercises'] = []
       for (const c of day.components) {
         if (!isScoreTypeName(c.scoreType)) throw new ConvexError(`Unknown score type "${c.scoreType}"`)
-        sections.push(sectionFor(itemKey(c.name), section._id, c, await scoreTypeId(c.scoreType)))
+        const score = { scoreTypeId: await scoreTypeId(c.scoreType), title: c.name.trim() }
+        if (c.kind === 'lift') {
+          lifts.push({
+            key: itemKey(c.name),
+            exerciseId: await exerciseId(c.name.trim().slice(0, 120)),
+            score,
+            prescriptions: parseRepScheme(c.repScheme ?? '').slice(0, 20),
+          })
+        } else sections.push(sectionFor(itemKey(c.name), metcon._id, c, score.scoreTypeId))
       }
+      if (lifts.length) sections.unshift({ key: STRENGTH_KEY, sectionId: strength._id, exercises: lifts })
       const existing = await ctx.db
         .query('workouts')
         .withIndex('by_class_date', (q) => q.eq('classId', classId).eq('date', day.date))
@@ -188,7 +240,7 @@ export const upsertWorkouts = mutation({
         const workoutId = await ctx.db.insert('workouts', {
           classId,
           date: day.date,
-          title: day.title.trim().slice(0, 120) || SECTION,
+          title: day.title.trim().slice(0, 120) || SECTION.metcon,
           program: sections,
           source: 'wodify',
         })
@@ -204,8 +256,9 @@ export const upsertWorkouts = mutation({
               ...sections.filter((s) => !existing.program.some((e) => e.key === s.key)),
             ]
           : [...existing.program, ...sections.filter((s) => !existing.program.some((e) => e.key === s.key))]
+      program.sort((a, b) => Number(b.key === STRENGTH_KEY) - Number(a.key === STRENGTH_KEY))
       if (program.length > MAX.sections) throw new ConvexError(`Too many components on ${day.date}`)
-      if (JSON.stringify(program) !== JSON.stringify(existing.program)) {
+      if (!sameData(program, existing.program)) {
         await ctx.db.patch(existing._id, { program })
         updated++
       }
@@ -215,8 +268,8 @@ export const upsertWorkouts = mutation({
   },
 })
 
-// One memberLog per athlete per scored component. Sets are parsed here from the raw result text.
-// Logs made in the app (no `source`) are never overwritten.
+// One memberLog per athlete per scored component or lift. Sets are parsed here from the raw result
+// text. Logs made in the app (no `source`) are never overwritten.
 export const upsertLogs = mutation({
   args: {
     logs: v.array(
@@ -241,7 +294,7 @@ export const upsertLogs = mutation({
     for (const l of logs) {
       if (!workouts.has(l.workoutId)) workouts.set(l.workoutId, await ctx.db.get(l.workoutId))
       const workout = workouts.get(l.workoutId)
-      const item = workout?.program.find((s) => s.key === l.itemKey)
+      const item = workout && findItem(workout.program, l.itemKey)
       const parsed = parseResults(l.results)
       if (!workout || !item?.score || isEmptyScore(parsed.sets) || !(await ctx.db.get(l.userId))) {
         skipped++
@@ -254,8 +307,9 @@ export const upsertLogs = mutation({
       const unit = parsed.unit
       const fields = {
         scoreTypeId: item.score.scoreTypeId,
+        exerciseId: item.exerciseId,
         unit,
-        isRx: l.isRx,
+        isRx: item.exerciseId ? undefined : l.isRx, // Wodify's Rx flag means nothing on lifts
         notes: l.notes?.trim().slice(0, 2000) || undefined,
         sortValue: sortMetric(sets),
         sets,
@@ -271,9 +325,8 @@ export const upsertLogs = mutation({
           skipped++
           continue
         }
-        const before = [existing.scoreTypeId, existing.unit, existing.isRx, existing.notes, existing.sortValue, existing.sets]
-        const after = [fields.scoreTypeId, fields.unit, fields.isRx, fields.notes, fields.sortValue, fields.sets]
-        if (JSON.stringify(before) !== JSON.stringify(after)) {
+        const stored = Object.fromEntries(Object.keys(fields).map((k) => [k, existing[k as keyof typeof fields]]))
+        if (!sameData(stored, fields)) {
           await ctx.db.patch(existing._id, fields)
           updated++
         }

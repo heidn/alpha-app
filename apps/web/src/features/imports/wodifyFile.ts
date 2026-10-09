@@ -7,11 +7,18 @@ import {
 } from '../../../../../convex/wodify'
 
 // Wodify performance results export (JSON, whole gym) -> what convex/wodifyImport.ts upserts:
-// athletes, the programmed days (one scored section per component), each athlete's results, and
-// visits (athlete + day attended, including days with no score).
+// athletes, the programmed days (a scored section per metcon component; lifts go in one Strength
+// section as exercises), each athlete's results, and visits (athlete + day attended, scored or not).
 
 export type ImportAthlete = { wodifyId: string; name: string }
-export type ImportComponent = { name: string; description: string; scoreType: ScoreTypeName }
+export type ComponentKind = 'metcon' | 'lift'
+export type ImportComponent = {
+  name: string
+  kind: ComponentKind
+  description: string
+  repScheme: string
+  scoreType: ScoreTypeName
+}
 export type ImportDay = { date: string; title: string; components: ImportComponent[] }
 export type ImportLog = {
   wodifyId: string
@@ -27,6 +34,7 @@ export type ParsedExport = {
   days: ImportDay[]
   logs: ImportLog[]
   visits: ImportVisit[]
+  exercises: string[] // lift names, for the exercise library
   rowCount: number
   empty: number // blank/zero results: kept as visits only
   skipped: number // results whose score type we can't tell
@@ -40,7 +48,9 @@ const JSON_COLS = [
   'Client Name',
   'Workout',
   'Component',
+  'Component Type',
   'Component Description',
+  'Rep Scheme',
   'Result',
   'Result Type',
   'Rx',
@@ -83,9 +93,13 @@ function mostCommon<T extends string>(counts: Map<T, number>): T | undefined {
 
 type Tally = {
   name: string
+  kind: ComponentKind
   descriptions: Map<string, number>
+  repSchemes: Map<string, number>
   scoreTypes: Map<ScoreTypeName, number>
 }
+
+const bump = <T,>(m: Map<T, number>, k: T) => m.set(k, (m.get(k) ?? 0) + 1)
 
 export function parseWodifyJson(data: unknown): ParsedExport {
   if (!Array.isArray(data) || !data.length || !isJsonRow(data[0]))
@@ -94,7 +108,13 @@ export function parseWodifyJson(data: unknown): ParsedExport {
   // Result rows are one per set/round: group by athlete + day + component.
   const logs = new Map<
     string,
-    ImportLog & { loggedOn: string; resultType: string; description: string }
+    ImportLog & {
+      loggedOn: string
+      resultType: string
+      kind: ComponentKind
+      description: string
+      repScheme: string
+    }
   >()
   for (const r of data) {
     if (!isJsonRow(r)) throw new Error('Some rows are missing columns')
@@ -123,7 +143,9 @@ export function parseWodifyJson(data: unknown): ParsedExport {
       results: [r.Result],
       loggedOn: r['Result Date'],
       resultType: r['Result Type'],
+      kind: r['Component Type'].trim() === 'Weightlifting' ? 'lift' : 'metcon',
       description: r['Component Description'],
+      repScheme: r['Rep Scheme'],
     })
   }
 
@@ -132,6 +154,7 @@ export function parseWodifyJson(data: unknown): ParsedExport {
   let empty = 0
   const out: ImportLog[] = []
   const visits = new Map<string, ImportVisit>()
+  const exercises = new Map<string, string>()
   for (const l of logs.values()) {
     visits.set(`${l.wodifyId}|${l.date}`, { wodifyId: l.wodifyId, date: l.date })
     if (isEmptyScore(parseResults(l.results).sets)) {
@@ -147,12 +170,16 @@ export function parseWodifyJson(data: unknown): ParsedExport {
     days.set(l.date, comps)
     const c = comps.get(norm(l.component)) ?? {
       name: l.component,
+      kind: l.kind,
       descriptions: new Map(),
+      repSchemes: new Map(),
       scoreTypes: new Map(),
     }
     comps.set(norm(l.component), c)
-    c.descriptions.set(l.description, (c.descriptions.get(l.description) ?? 0) + 1)
-    c.scoreTypes.set(scoreType, (c.scoreTypes.get(scoreType) ?? 0) + 1)
+    bump(c.descriptions, l.description)
+    bump(c.repSchemes, l.repScheme)
+    bump(c.scoreTypes, scoreType)
+    if (l.kind === 'lift' && !exercises.has(norm(l.component))) exercises.set(norm(l.component), l.component)
     out.push({
       wodifyId: l.wodifyId,
       date: l.date,
@@ -166,11 +193,16 @@ export function parseWodifyJson(data: unknown): ParsedExport {
   const dayList = [...days.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, comps]) => {
-      const components = [...comps.values()].map((c) => ({
-        name: c.name,
-        description: mostCommon(c.descriptions) ?? '',
-        scoreType: mostCommon(c.scoreTypes)!,
-      }))
+      // Lifts first: that's the order of the day.
+      const components = [...comps.values()]
+        .sort((a, b) => Number(b.kind === 'lift') - Number(a.kind === 'lift'))
+        .map((c) => ({
+          name: c.name,
+          kind: c.kind,
+          description: mostCommon(c.descriptions) ?? '',
+          repScheme: mostCommon(c.repSchemes) ?? '',
+          scoreType: mostCommon(c.scoreTypes)!,
+        }))
       const named = components.filter((c) => norm(c.name) !== 'metcon').map((c) => c.name)
       return {
         date,
@@ -183,6 +215,7 @@ export function parseWodifyJson(data: unknown): ParsedExport {
     days: dayList,
     logs: out,
     visits: [...visits.values()],
+    exercises: [...exercises.values()].sort((a, b) => a.localeCompare(b)),
     rowCount: data.length,
     empty,
     skipped,

@@ -67,7 +67,7 @@ function ImportCard() {
   const onImport = async () => {
     if (!file || !classId) return
     setNotice(null)
-    const { athletes, days, logs, visits } = file.parsed
+    const { athletes, days, logs, visits, exercises } = file.parsed
     const r = await run(async () => {
       const totals: Totals = { athletes: 0, workouts: 0, logs: 0, visits: 0, skipped: 0 }
       const step = async <T,>(label: string, parts: T[][], send: (part: T[]) => Promise<void>) => {
@@ -77,7 +77,10 @@ function ImportCard() {
         }
       }
       setProgress({ label: 'Preparing library', done: 0, total: 1 })
-      await prepare({ scoreTypes: [...new Set(days.flatMap((d) => d.components.map((c) => c.scoreType)))] })
+      await prepare({
+        scoreTypes: [...new Set(days.flatMap((d) => d.components.map((c) => c.scoreType)))],
+        exercises,
+      })
 
       const users = new Map<string, Id<'users'>>()
       await step('Athletes', chunks(athletes, CHUNK.athletes), async (part) => {
@@ -189,7 +192,9 @@ function ImportCard() {
         {p && (
           <p className={styles.summary}>
             {p.athletes.length} athletes · {p.days.length} days · {p.logs.length} results ·{' '}
-            {p.visits.length} visits · {p.from} to {p.to}
+            {p.visits.length} visits ·{' '}
+            {p.exercises.length ? `${p.exercises.length} lifts · ` : ''}
+            {p.from} to {p.to}
             {p.empty ? ` · ${p.empty} blank or zero results kept as attendance only` : ''}
             {p.skipped ? ` · ${p.skipped} results of an unknown type left out` : ''}
           </p>
