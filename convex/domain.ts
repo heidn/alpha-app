@@ -55,12 +55,21 @@ export const programExerciseV = v.object({
   prescriptions: v.array(prescriptionV),
 })
 
+// How a metcon runs; intervals = "N sets, M:SS on // M:SS off".
+export const metconFormatV = v.union(
+  v.literal('forTime'),
+  v.literal('amrap'),
+  v.literal('emom'),
+  v.literal('intervals'),
+)
+
 export const programSectionV = v.object({
   key: v.string(),
   sectionId: v.id('sections'),
   notes: v.optional(v.string()),
   score: v.optional(scoreV),
-  timeCapSec: v.optional(v.number()), // AMRAP length / For Time cap
+  format: v.optional(metconFormatV),
+  timeCapSec: v.optional(v.number()), // AMRAP/EMOM/intervals length, For Time cap
   exercises: v.array(programExerciseV),
 })
 
@@ -80,6 +89,7 @@ export const memberSetV = v.object({
 // Where imported data came from; absent = made in this app.
 export const sourceV = v.literal('wodify')
 
+export type MetconFormat = Infer<typeof metconFormatV>
 export type MemberSet = Infer<typeof memberSetV>
 export type ScoreField = Infer<typeof scoreFieldV>
 export type Prescription = Infer<typeof prescriptionV>

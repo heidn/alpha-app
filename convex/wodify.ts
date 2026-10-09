@@ -1,4 +1,4 @@
-import type { MemberSet, ScoreField } from './domain'
+import type { MemberSet, MetconFormat, ScoreField } from './domain'
 
 // Pure Wodify parsing (no server imports): result strings -> sets, result types -> score types.
 
@@ -88,6 +88,46 @@ export function parseResults(results: string[]) {
   return { sets, unit, warnings }
 }
 
+const NUMERIC = ['reps', 'weight', 'timeSeconds', 'rounds', 'distance', 'calories'] as const
+
+// "0 Total Reps", "0:00", "0 + 0", blank: the athlete was there but didn't score.
+export const isEmptyScore = (sets: MemberSet[]) =>
+  sets.every((s) => !s.done && NUMERIC.every((k) => !s[k]))
+
+// Per-round sets -> one total set, for score types that aren't perSet.
+export function totalSet(sets: MemberSet[]): MemberSet[] {
+  if (sets.length <= 1) return sets
+  const total: MemberSet = { setNumber: 1 }
+  for (const k of NUMERIC) {
+    const xs = sets.flatMap((s) => (s[k] === undefined ? [] : [s[k]]))
+    if (xs.length) total[k] = k === 'weight' ? Math.max(...xs) : xs.reduce((a, b) => a + b, 0)
+  }
+  if (sets.some((s) => s.done)) total.done = true
+  return [total]
+}
+
+const mins = (m: string, s = '0') => Number(m) * 60 + Number(s)
+
+// Format + length/cap from a component description (plain text). {} = can't tell.
+export function parseFormat(text: string): { format?: MetconFormat; timeCapSec?: number } {
+  let m: RegExpExecArray | null
+  // "5 sets / 2:00 on//2:00 off": the last rest isn't part of the workout.
+  if ((m = /(\d+)\s*(?:sets|rounds)\b[\s\S]*?(\d+):(\d\d)\s*on\s*\/\/?\s*(\d+):(\d\d)\s*off/i.exec(text))) {
+    const n = Number(m[1])
+    return { format: 'intervals', timeCapSec: n * mins(m[2], m[3]) + (n - 1) * mins(m[4], m[5]) }
+  }
+  if ((m = /\bE(\d+):(\d\d)\s*x\s*(\d+)/i.exec(text)))
+    return { format: 'emom', timeCapSec: mins(m[1], m[2]) * Number(m[3]) }
+  if ((m = /\bE\d*MOM\s*(\d+)/i.exec(text))) return { format: 'emom', timeCapSec: mins(m[1]) }
+  if ((m = /\bAMRAP\s*(\d+)|(\d+)\s*min(?:ute)?s?\s*AMRAP/i.exec(text)))
+    return { format: 'amrap', timeCapSec: mins(m[1] ?? m[2]) }
+  if (/for time|\d\s*RFT\b/i.test(text)) {
+    m = /(?:time\s*)?cap:?\s*(\d+)(?::(\d\d))?|(\d+)\s*min(?:ute)?s?\s*(?:time\s*)?cap/i.exec(text)
+    return { format: 'forTime', timeCapSec: m ? mins(m[1] ?? m[3], m[2]) : undefined }
+  }
+  return {}
+}
+
 // Leaderboard metric; direction comes from the score type's `sort`.
 export function sortMetric(sets: MemberSet[]): number | undefined {
   const sum = (k: 'timeSeconds' | 'reps' | 'distance' | 'calories') =>
@@ -117,6 +157,7 @@ export const SCORE_TYPES = {
   Checkmark: { fields: ['done'], perSet: false, sort: 'desc' },
   Distance: { fields: ['distance'], perSet: false, sort: 'desc' },
   Calories: { fields: ['calories'], perSet: false, sort: 'desc' },
+  Reps: { fields: ['reps'], perSet: false, sort: 'desc' },
   'Weight per set': { fields: ['reps', 'weight'], perSet: true, sort: 'desc' },
 } as const satisfies Record<
   string,
@@ -128,6 +169,7 @@ export const isScoreTypeName = (s: string): s is ScoreTypeName =>
 
 // One athlete's result -> score type. "Each Round" is decided by what was logged
 // (Wodify's "N rounds for reps|calories|distance|time" scheme isn't in the export).
+// Most Each Round results hold only a total on one row: those are scored as a total.
 export function scoreTypeFor(resultType: string, results: string[]): ScoreTypeName | undefined {
   const t = norm(resultType)
   if (t.startsWith('time')) return 'For Time' // incl. "Time ↓ shorter is better" (mis-encoded "?")
@@ -138,10 +180,11 @@ export function scoreTypeFor(resultType: string, results: string[]): ScoreTypeNa
   if (t === 'weight') return 'Weight per set'
   if (t !== 'each round') return undefined
   const sets = parseResults(results).sets
-  if (sets.some((x) => x.timeSeconds !== undefined)) return 'Each Round'
-  if (sets.some((x) => x.calories !== undefined)) return 'Calories per round'
-  if (sets.some((x) => x.distance !== undefined)) return 'Distance per round'
-  return 'Reps per round'
+  const total = results.filter((x) => x.trim()).length === 1
+  if (sets.some((x) => x.timeSeconds !== undefined)) return total ? 'For Time' : 'Each Round'
+  if (sets.some((x) => x.calories !== undefined)) return total ? 'Calories' : 'Calories per round'
+  if (sets.some((x) => x.distance !== undefined)) return total ? 'Distance' : 'Distance per round'
+  return total ? 'Reps' : 'Reps per round'
 }
 
 export const stripHtml = (s: string) =>

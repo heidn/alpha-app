@@ -11,13 +11,13 @@ import styles from './WodifyImport.module.css'
 import { parseWodifyJson, type ParsedExport } from './wodifyFile.ts'
 
 // Sizes per call; must stay within the MAX limits in convex/wodifyImport.ts.
-const CHUNK = { athletes: 100, days: 50, logs: 200 }
+const CHUNK = { athletes: 100, days: 50, logs: 200, visits: 200 }
 
 const chunks = <T,>(xs: T[], n: number) =>
   Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, (i + 1) * n))
 
 type Progress = { label: string; done: number; total: number }
-type Totals = { athletes: number; workouts: number; logs: number; skipped: number }
+type Totals = { athletes: number; workouts: number; logs: number; visits: number; skipped: number }
 
 export function WodifyImportPage() {
   return (
@@ -48,7 +48,9 @@ function ImportCard() {
   const upsertAthletes = useMutation(api.wodifyImport.upsertAthletes)
   const upsertWorkouts = useMutation(api.wodifyImport.upsertWorkouts)
   const upsertLogs = useMutation(api.wodifyImport.upsertLogs)
+  const upsertVisits = useMutation(api.wodifyImport.upsertVisits)
   const removeImported = useMutation(api.wodifyImport.removeImported)
+  const removeImportedVisits = useMutation(api.wodifyImport.removeImportedVisits)
 
   const onPick = async (f: File | undefined) => {
     clearError()
@@ -65,9 +67,9 @@ function ImportCard() {
   const onImport = async () => {
     if (!file || !classId) return
     setNotice(null)
-    const { athletes, days, logs } = file.parsed
+    const { athletes, days, logs, visits } = file.parsed
     const r = await run(async () => {
-      const totals: Totals = { athletes: 0, workouts: 0, logs: 0, skipped: 0 }
+      const totals: Totals = { athletes: 0, workouts: 0, logs: 0, visits: 0, skipped: 0 }
       const step = async <T,>(label: string, parts: T[][], send: (part: T[]) => Promise<void>) => {
         for (const [i, part] of parts.entries()) {
           setProgress({ label, done: i, total: parts.length })
@@ -103,13 +105,22 @@ function ImportCard() {
         totals.logs += res.created + res.updated
         totals.skipped += res.skipped
       })
+
+      const attended = visits.flatMap((x) => {
+        const userId = users.get(x.wodifyId)
+        return userId ? [{ userId, date: x.date }] : []
+      })
+      await step('Attendance', chunks(attended, CHUNK.visits), async (part) => {
+        const res = await upsertVisits({ classId, visits: part })
+        totals.visits += res.created
+      })
       return totals
     })
     setProgress(null)
     if (r.ok) {
       const t = r.value
       setNotice(
-        `Done. New athletes: ${t.athletes} · workouts added or changed: ${t.workouts} · results added or changed: ${t.logs}` +
+        `Done. New athletes: ${t.athletes} · workouts added or changed: ${t.workouts} · results added or changed: ${t.logs} · visits added: ${t.visits}` +
           (t.skipped ? ` · ${t.skipped} skipped (no result, or already logged in the app)` : ''),
       )
     }
@@ -117,25 +128,44 @@ function ImportCard() {
 
   const onRemove = async () => {
     if (!classId) return
-    if (!window.confirm('Delete all imported workouts and results for this class? Results logged in the app stay.'))
+    if (
+      !window.confirm(
+        'Delete all imported workouts, results and attendance for this class? Anything made in the app stays.',
+      )
+    )
       return
     setNotice(null)
     const r = await run(async () => {
       let cursor: string | null = null
-      let removed = { workouts: 0, logs: 0 }
+      const removed = { workouts: 0, logs: 0, visits: 0 }
       for (;;) {
-        setProgress({ label: 'Removing', done: removed.workouts, total: 0 })
+        setProgress({ label: 'Removing workouts', done: removed.workouts, total: 0 })
         const res: Awaited<ReturnType<typeof removeImported>> = await removeImported({
           classId,
           paginationOpts: { numItems: 25, cursor },
         })
-        removed = { workouts: removed.workouts + res.workouts, logs: removed.logs + res.logs }
+        removed.workouts += res.workouts
+        removed.logs += res.logs
+        if (res.isDone) break
+        cursor = res.cursor
+      }
+      cursor = null
+      for (;;) {
+        setProgress({ label: 'Removing attendance', done: removed.visits, total: 0 })
+        const res: Awaited<ReturnType<typeof removeImportedVisits>> = await removeImportedVisits({
+          classId,
+          paginationOpts: { numItems: 500, cursor },
+        })
+        removed.visits += res.visits
         if (res.isDone) return removed
         cursor = res.cursor
       }
     })
     setProgress(null)
-    if (r.ok) setNotice(`Removed ${r.value.workouts} workouts and ${r.value.logs} results.`)
+    if (r.ok)
+      setNotice(
+        `Removed ${r.value.workouts} workouts, ${r.value.logs} results and ${r.value.visits} visits.`,
+      )
   }
 
   const p = file?.parsed
@@ -159,8 +189,9 @@ function ImportCard() {
         {p && (
           <p className={styles.summary}>
             {p.athletes.length} athletes · {p.days.length} days · {p.logs.length} results ·{' '}
-            {p.from} to {p.to}
-            {p.skipped ? ` · ${p.skipped} empty results left out` : ''}
+            {p.visits.length} visits · {p.from} to {p.to}
+            {p.empty ? ` · ${p.empty} blank or zero results kept as attendance only` : ''}
+            {p.skipped ? ` · ${p.skipped} results of an unknown type left out` : ''}
           </p>
         )}
         <label className={ui.field}>
