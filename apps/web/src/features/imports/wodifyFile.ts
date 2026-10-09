@@ -11,13 +11,13 @@ import {
 // section as exercises), each athlete's results, and visits (athlete + day attended, scored or not).
 
 export type ImportAthlete = { wodifyId: string; name: string }
-export type ComponentKind = 'metcon' | 'lift'
+export type ComponentKind = 'metcon' | 'lift' | 'warmup'
 export type ImportComponent = {
   name: string
   kind: ComponentKind
   description: string
   repScheme: string
-  scoreType: ScoreTypeName
+  scoreType?: ScoreTypeName // absent = warmup (display-only)
 }
 export type ImportDay = { date: string; title: string; components: ImportComponent[] }
 export type ImportLog = {
@@ -223,3 +223,45 @@ export function parseWodifyJson(data: unknown): ParsedExport {
     to: dayList[dayList.length - 1]?.date ?? '',
   }
 }
+
+// Warmups aren't in any Wodify export (nothing is scored); they're collected from the coach app
+// into [{ date: "2026-02-03", description, workout?, component? }]. Several on one day are joined.
+type WarmupRow = { date: string; description: string }
+const isWarmupRow = (r: unknown): r is WarmupRow =>
+  !!r &&
+  typeof r === 'object' &&
+  typeof (r as WarmupRow).date === 'string' &&
+  typeof (r as WarmupRow).description === 'string'
+
+export function parseWarmupsJson(data: unknown): ParsedExport {
+  if (!Array.isArray(data) || !data.every(isWarmupRow)) throw new Error('Some warmup rows are missing date or description')
+  const byDate = new Map<string, string[]>()
+  for (const r of data) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) throw new Error(`Can't read date "${r.date}"`)
+    if (!r.description.trim()) continue
+    byDate.set(r.date, [...(byDate.get(r.date) ?? []), r.description.trim()])
+  }
+  const days = [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, texts]) => ({
+      date,
+      title: 'Warm-up',
+      components: [{ name: 'Warm-up', kind: 'warmup' as const, description: texts.join('<br><br>'), repScheme: '' }],
+    }))
+  return {
+    athletes: [],
+    days,
+    logs: [],
+    visits: [],
+    exercises: [],
+    rowCount: data.length,
+    empty: 0,
+    skipped: 0,
+    from: days[0]?.date ?? '',
+    to: days[days.length - 1]?.date ?? '',
+  }
+}
+
+// Either file the Imports page accepts, told apart by shape.
+export const parseExport = (data: unknown): ParsedExport =>
+  Array.isArray(data) && data.length && isWarmupRow(data[0]) ? parseWarmupsJson(data) : parseWodifyJson(data)

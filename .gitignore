@@ -19,3 +19,4 @@ dist
 *.xlsx
 *.csv
 performance_results*.json
+wodify_*.json

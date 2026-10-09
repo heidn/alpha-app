@@ -25,8 +25,11 @@ export const sameData = (a: unknown, b: unknown) =>
 
 // Program item key of an imported component, stable across re-imports.
 export const itemKey = (component: string) => `wodify:${norm(component)}`
-// The one section holding a day's imported lifts.
+// The one section holding a day's imported lifts, and the one holding its warmup (display-only).
 export const STRENGTH_KEY = 'wodify-strength'
+export const WARMUP_KEY = 'wodify-warmup'
+// Day order: warmup, strength, then everything else as it was.
+export const sectionRank = (key: string) => (key === WARMUP_KEY ? 0 : key === STRENGTH_KEY ? 1 : 2)
 
 const num = (s: string) => Number(s.replace(/,/g, ''))
 const weightUnit = (u: string): WeightUnit => (u.toLowerCase().startsWith('kg') ? 'kg' : 'lb')

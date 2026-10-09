@@ -8,7 +8,7 @@ import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
 import styles from './WodifyImport.module.css'
-import { parseWodifyJson, type ParsedExport } from './wodifyFile.ts'
+import { parseExport, type ParsedExport } from './wodifyFile.ts'
 
 // Sizes per call; must stay within the MAX limits in convex/wodifyImport.ts.
 const CHUNK = { athletes: 100, days: 50, logs: 200, visits: 200 }
@@ -58,7 +58,7 @@ function ImportCard() {
     setFile(null)
     if (!f) return
     try {
-      setFile({ name: f.name, parsed: parseWodifyJson(JSON.parse(await f.text())) })
+      setFile({ name: f.name, parsed: parseExport(JSON.parse(await f.text())) })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Couldn’t read this file')
     }
@@ -78,7 +78,7 @@ function ImportCard() {
       }
       setProgress({ label: 'Preparing library', done: 0, total: 1 })
       await prepare({
-        scoreTypes: [...new Set(days.flatMap((d) => d.components.map((c) => c.scoreType)))],
+        scoreTypes: [...new Set(days.flatMap((d) => d.components.flatMap((c) => (c.scoreType ? [c.scoreType] : []))))],
         exercises,
       })
 
