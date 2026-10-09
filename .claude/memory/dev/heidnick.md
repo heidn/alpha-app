@@ -1,5 +1,7 @@
 # heidnick
-- Task: Wodify import, split into stacked PRs: wodify-1-schema (incl. Joe's schema-athlete commits) → 2-claim → 3-import → 4-ui. Merge in order; old heidnick/wodify-results kept until merged. Worktree ../alpha-app-wodify-import.
-- Joe's schema-athlete commits ride in PR 1: confirm with Joe, then he closes his branch.
-- Not run end-to-end yet: #/imports → JSON → class → Import; re-import = 0 changes.
-- Next: rebase heidnick/onboarding (pre-monorepo paths) after wodify merges. Strength export, bookings, timeCapSec.
+- Wodify import merged (#13–#16). Not run end-to-end in the browser yet: #/imports → JSON → class → Import; re-import = 0 changes.
+- Onboarding: `heidnick/onboarding` rebased onto monorepo main (old PR #10 closed → new PR). Not browser-tested.
+
+## TODO
+1. Delete `convex/seed.ts` (+ ScoreTypesPanel empty-state text mentioning `seed:scoreTypes`). Data entered manually from now on.
+2. Later: athlete home (`workouts.myDay`), result logging + leaderboard (memberLogs mutations). Strength export, bookings, timeCapSec.

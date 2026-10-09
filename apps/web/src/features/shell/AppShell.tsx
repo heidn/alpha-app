@@ -9,6 +9,7 @@ import { GymsPage } from '../gyms/GymsPage.tsx'
 import { HomePage } from '../home/HomePage.tsx'
 import { WodifyImportPage } from '../imports/WodifyImportPage.tsx'
 import { LibraryPage } from '../library/LibraryPage.tsx'
+import { OnboardingPage } from '../onboarding/OnboardingPage.tsx'
 import { WorkoutEditorPage } from '../workouts/WorkoutEditorPage.tsx'
 import { WorkoutsPage } from '../workouts/WorkoutsPage.tsx'
 import styles from './AppShell.module.css'
@@ -42,6 +43,8 @@ export function AppShell() {
     { route: { name: 'admin' }, label: 'Users', show: isAdmin },
     { route: { name: 'imports' }, label: 'Imports', show: isAdmin },
   ]
+  // Profile (gender drives Rx) is required first. null = store() not finished yet.
+  const needsOnboarding = me != null && !me.gender
   const forbidden = <p className={styles.forbidden}>You don’t have access to this page.</p>
 
   return (
@@ -56,7 +59,7 @@ export function AppShell() {
           </a>
           <ul className={styles.links}>
             {links
-              .filter((l) => l.show)
+              .filter((l) => l.show && !needsOnboarding)
               .map((l) => (
                 <li key={l.route.name}>
                   <a
@@ -75,12 +78,13 @@ export function AppShell() {
         </nav>
       </header>
       <main className={styles.main}>
-        {route.name === 'home' ? (
-          <HomePage role={me?.role} />
-        ) : me === undefined ? null : !isStaff ||
-          ((route.name === 'admin' || route.name === 'imports') && !isAdmin) ? (
+        {me == null ? null : needsOnboarding ? (
+          <OnboardingPage user={me} />
+        ) : route.name === 'home' ? (
+          <HomePage role={me.role} />
+        ) : !isStaff || ((route.name === 'admin' || route.name === 'imports') && !isAdmin) ? (
           forbidden
-        ) : route.name === 'admin' && me ? (
+        ) : route.name === 'admin' ? (
           <AdminPage currentUserId={me._id} />
         ) : route.name === 'gyms' ? (
           <GymsPage isAdmin={isAdmin} />
