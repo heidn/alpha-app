@@ -5,7 +5,7 @@
 - Web: `apps/web/src/`. Lint: oxlint. Dev URL http://localhost:5173.
 - Convex backend in `convex/`, one file per domain (`convex/<domain>.ts`).
 - Auth: `ClerkProvider` → `ConvexProviderWithClerk` (`apps/web/src/main.tsx`). Convex env `CLERK_FRONTEND_API_URL` = Clerk Frontend API URL.
-- Users: `users` table keyed by `tokenIdentifier`; client calls `api.users.store` after sign-in (`apps/web/src/features/auth/useStoreUser.ts`).
+- Users: `users` table keyed by `tokenIdentifier`; client calls `api.users.store` after sign-in (`apps/web/src/features/auth/useStoreUser.ts`). No `tokenIdentifier` = imported athlete not signed in yet; `store` claims it when exactly one user has the same `nameKey` (norm(name), kept on all users).
 - Auth checks: `getCurrentUser(ctx)` / `requireUser(ctx)` / `requireRole(ctx, ...roles)` in `convex/users.ts`.
 - Roles: `users.role` optional `admin|coach|athlete` (absent = athlete, via `roleOf`); defs in `convex/roles.ts` (no server imports, client-safe). Admin UI `apps/web/src/features/admin/`; first admin via `npx convex run admin:grantAdmin`. Admin invites (`convex/invites.ts`): role held in `userInvites`, claimed in `users.store` if email verified.
 - Frontend features: `apps/web/src/features/<feature>/`. UI conventions: `.claude/skills/react-ux` skill (load before UI work).
@@ -16,7 +16,8 @@
 - Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.
 - `workouts` (one per class+date) embed `program`: sections→exercises→prescriptions, order = array order, items have stable client `key`; `score` present = scored item.
 - `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts` (gym staff = `gymMembers.staff`).
-- Client: routes `#/gyms[/:id]`, `#/classes/:id`, `#/library`, `#/workouts[/:id]`; shared `apps/web/src/features/ui/` (ui.module.css, ErrorBanner, useRun).
+- Wodify import (`convex/wodifyImport.ts`, `#/imports`, admin): performance-results JSON parsed in browser → chunked idempotent upserts (athletes → workouts → memberLogs); imported rows have `source: 'wodify'`, item key `wodify:<norm(component)>`; metcon = section-level score, notes = stripped HTML description. Strength export next, same path.
+- Client: routes `#/gyms[/:id]`, `#/classes/:id`, `#/library`, `#/workouts[/:id]`, `#/imports`; shared `apps/web/src/features/ui/` (ui.module.css, ErrorBanner, useRun).
 
 ## Conventions
 - See CLAUDE.md. Each dev has own Convex dev deployment.

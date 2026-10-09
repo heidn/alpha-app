@@ -9,6 +9,7 @@ export type Route =
   | { name: 'library' }
   | { name: 'workouts' }
   | { name: 'workout'; id: string }
+  | { name: 'imports' }
 
 const subscribe = (cb: () => void) => {
   window.addEventListener('hashchange', cb)
@@ -21,6 +22,7 @@ const parse = (hash: string): Route => {
   if (a === 'library') return { name: 'library' }
   if (a === 'gyms') return b ? { name: 'gym', id: b } : { name: 'gyms' }
   if (a === 'classes' && b) return { name: 'class', id: b }
+  if (a === 'imports') return { name: 'imports' }
   if (a === 'workouts') return b ? { name: 'workout', id: b } : { name: 'workouts' }
   return { name: 'home' }
 }

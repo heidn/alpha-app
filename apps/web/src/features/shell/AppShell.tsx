@@ -7,6 +7,7 @@ import { ClassPage } from '../classes/ClassPage.tsx'
 import { GymPage } from '../gyms/GymPage.tsx'
 import { GymsPage } from '../gyms/GymsPage.tsx'
 import { HomePage } from '../home/HomePage.tsx'
+import { WodifyImportPage } from '../imports/WodifyImportPage.tsx'
 import { LibraryPage } from '../library/LibraryPage.tsx'
 import { WorkoutEditorPage } from '../workouts/WorkoutEditorPage.tsx'
 import { WorkoutsPage } from '../workouts/WorkoutsPage.tsx'
@@ -23,6 +24,7 @@ const SECTION: Record<Route['name'], Route['name']> = {
   library: 'library',
   workouts: 'workouts',
   workout: 'workouts',
+  imports: 'imports',
 }
 
 export function AppShell() {
@@ -38,6 +40,7 @@ export function AppShell() {
     { route: { name: 'workouts' }, label: 'Workouts', show: isStaff },
     { route: { name: 'library' }, label: 'Library', show: isStaff },
     { route: { name: 'admin' }, label: 'Users', show: isAdmin },
+    { route: { name: 'imports' }, label: 'Imports', show: isAdmin },
   ]
   const forbidden = <p className={styles.forbidden}>You don’t have access to this page.</p>
 
@@ -74,7 +77,8 @@ export function AppShell() {
       <main className={styles.main}>
         {route.name === 'home' ? (
           <HomePage role={me?.role} />
-        ) : me === undefined ? null : !isStaff || (route.name === 'admin' && !isAdmin) ? (
+        ) : me === undefined ? null : !isStaff ||
+          ((route.name === 'admin' || route.name === 'imports') && !isAdmin) ? (
           forbidden
         ) : route.name === 'admin' && me ? (
           <AdminPage currentUserId={me._id} />
@@ -90,6 +94,8 @@ export function AppShell() {
           <WorkoutsPage />
         ) : route.name === 'workout' ? (
           <WorkoutEditorPage id={route.id} />
+        ) : route.name === 'imports' ? (
+          <WodifyImportPage />
         ) : null}
       </main>
     </div>
