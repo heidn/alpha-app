@@ -15,9 +15,11 @@ import {
   sameData,
   SCORE_TYPES,
   sortMetric,
+  sectionRank,
   STRENGTH_KEY,
   stripHtml,
   totalSet,
+  WARMUP_KEY,
   type ScoreTypeName,
 } from './wodify'
 
@@ -26,7 +28,7 @@ import {
 // can be re-run (or resumed after a failure) without duplicating anything. A gym's history can't
 // fit one transaction, so this is deliberately chunked rather than one mutation.
 
-const SECTION = { metcon: 'Metcon', strength: 'Strength' } as const
+const SECTION = { metcon: 'Metcon', strength: 'Strength', warmup: 'Warm-up' } as const
 const MAX = { athletes: 100, days: 50, logs: 200, visits: 200, sections: 20, exercises: 200 }
 
 function limit(n: number, max: number, what: string) {
@@ -185,10 +187,10 @@ export const upsertWorkouts = mutation({
         components: v.array(
           v.object({
             name: v.string(),
-            kind: v.optional(v.union(v.literal('metcon'), v.literal('lift'))),
+            kind: v.optional(v.union(v.literal('metcon'), v.literal('lift'), v.literal('warmup'))),
             description: v.string(),
             repScheme: v.optional(v.string()),
-            scoreType: v.string(),
+            scoreType: v.optional(v.string()), // required unless warmup
           }),
         ),
       }),
@@ -200,7 +202,9 @@ export const upsertWorkouts = mutation({
     if (!(await ctx.db.get(classId))) throw new ConvexError('Class not found')
     const metcon = await sectionByTitle(ctx, SECTION.metcon)
     const strength = await sectionByTitle(ctx, SECTION.strength)
-    if (!metcon || !strength) throw new ConvexError('Library sections are missing: start the import again')
+    const warmup = await sectionByTitle(ctx, SECTION.warmup)
+    if (!metcon || !strength || !warmup)
+      throw new ConvexError('Library sections are missing: start the import again')
     const scoreTypeId = await scoreTypeIds(ctx)
     const exerciseIds = new Map<string, Id<'exercises'>>()
     const exerciseId = async (name: string) => {
@@ -219,7 +223,13 @@ export const upsertWorkouts = mutation({
       const sections: ProgramSection[] = []
       const lifts: ProgramSection['exercises'] = []
       for (const c of day.components) {
-        if (!isScoreTypeName(c.scoreType)) throw new ConvexError(`Unknown score type "${c.scoreType}"`)
+        if (c.kind === 'warmup') {
+          const notes = stripHtml(c.description).slice(0, 4000)
+          if (notes) sections.push({ key: WARMUP_KEY, sectionId: warmup._id, notes, exercises: [] })
+          continue
+        }
+        if (!c.scoreType || !isScoreTypeName(c.scoreType))
+          throw new ConvexError(`Unknown score type "${c.scoreType ?? ''}"`)
         const score = { scoreTypeId: await scoreTypeId(c.scoreType), title: c.name.trim() }
         if (c.kind === 'lift') {
           lifts.push({
@@ -230,7 +240,8 @@ export const upsertWorkouts = mutation({
           })
         } else sections.push(sectionFor(itemKey(c.name), metcon._id, c, score.scoreTypeId))
       }
-      if (lifts.length) sections.unshift({ key: STRENGTH_KEY, sectionId: strength._id, exercises: lifts })
+      if (lifts.length) sections.push({ key: STRENGTH_KEY, sectionId: strength._id, exercises: lifts })
+      sections.sort((a, b) => sectionRank(a.key) - sectionRank(b.key))
       const existing = await ctx.db
         .query('workouts')
         .withIndex('by_class_date', (q) => q.eq('classId', classId).eq('date', day.date))
@@ -256,7 +267,7 @@ export const upsertWorkouts = mutation({
               ...sections.filter((s) => !existing.program.some((e) => e.key === s.key)),
             ]
           : [...existing.program, ...sections.filter((s) => !existing.program.some((e) => e.key === s.key))]
-      program.sort((a, b) => Number(b.key === STRENGTH_KEY) - Number(a.key === STRENGTH_KEY))
+      program.sort((a, b) => sectionRank(a.key) - sectionRank(b.key))
       if (program.length > MAX.sections) throw new ConvexError(`Too many components on ${day.date}`)
       if (!sameData(program, existing.program)) {
         await ctx.db.patch(existing._id, { program })
