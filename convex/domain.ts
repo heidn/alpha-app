@@ -6,13 +6,14 @@ export const weightUnitV = v.union(v.literal('kg'), v.literal('lb'))
 export const distanceUnitV = v.union(v.literal('m'), v.literal('km'), v.literal('mi'))
 
 // MemberSet field names a score type can ask for.
-export const SCORE_FIELDS = ['reps', 'weight', 'timeSeconds', 'rounds', 'distance', 'done'] as const
+export const SCORE_FIELDS = ['reps', 'weight', 'timeSeconds', 'rounds', 'distance', 'calories', 'done'] as const
 export const scoreFieldV = v.union(
   v.literal('reps'),
   v.literal('weight'),
   v.literal('timeSeconds'),
   v.literal('rounds'),
   v.literal('distance'),
+  v.literal('calories'),
   v.literal('done'),
 )
 export const sortV = v.union(v.literal('asc'), v.literal('desc'))
@@ -72,9 +73,14 @@ export const memberSetV = v.object({
   timeSeconds: v.optional(v.number()),
   rounds: v.optional(v.number()),
   distance: v.optional(v.number()),
+  calories: v.optional(v.number()),
   done: v.optional(v.boolean()),
 })
 
+// Where imported data came from; absent = made in this app.
+export const sourceV = v.literal('wodify')
+
+export type MemberSet = Infer<typeof memberSetV>
 export type ScoreField = Infer<typeof scoreFieldV>
 export type Prescription = Infer<typeof prescriptionV>
 export type ProgramSection = Infer<typeof programSectionV>

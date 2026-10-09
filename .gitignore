@@ -14,3 +14,8 @@ dist
 
 # Claude: per-machine settings
 .claude/settings.local.json
+
+# Exported member data (Wodify etc.) — personal data, never commit
+*.xlsx
+*.csv
+performance_results*.json

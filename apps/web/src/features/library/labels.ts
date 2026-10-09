@@ -6,5 +6,6 @@ export const FIELD_LABEL: Record<ScoreField, string> = {
   timeSeconds: 'Time',
   rounds: 'Rounds',
   distance: 'Distance',
+  calories: 'Calories',
   done: 'Done',
 }
