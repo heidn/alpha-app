@@ -20,6 +20,7 @@ import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 import type * as wodify from "../wodify.js";
+import type * as wodifyImport from "../wodifyImport.js";
 import type * as workouts from "../workouts.js";
 
 import type {
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   users: typeof users;
   wodify: typeof wodify;
+  wodifyImport: typeof wodifyImport;
   workouts: typeof workouts;
 }>;
 
