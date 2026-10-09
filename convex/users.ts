@@ -3,6 +3,7 @@ import { mutation, query, type QueryCtx } from './_generated/server'
 import { claimInvites, normalizeEmail } from './classMembers'
 import { claimRoleInvite } from './invites'
 import { roleOf, type Role } from './roles'
+import { norm } from './wodify'
 
 export async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity()
@@ -50,18 +51,40 @@ export const store = mutation({
       lastName,
       tokenIdentifier: identity.tokenIdentifier,
     }
-    const existing = await getCurrentUser(ctx)
+    const nameKey = norm(fields.name)
+    let existing = await getCurrentUser(ctx)
+    if (!existing) {
+      // Imported (Wodify) athletes wait unclaimed; take one over only when the name is unambiguous.
+      // Admins fix mismatches with wodifyImport.mergeImportedUser.
+      const sameName = await ctx.db
+        .query('users')
+        .withIndex('by_nameKey', (q) => q.eq('nameKey', nameKey))
+        .take(10)
+      const unclaimed = sameName.filter((u) => !u.tokenIdentifier)
+      if (unclaimed.length === 1 && sameName.length === 1) {
+        await ctx.db.patch(unclaimed[0]._id, { tokenIdentifier: fields.tokenIdentifier })
+        existing = { ...unclaimed[0], tokenIdentifier: fields.tokenIdentifier }
+      }
+    }
     // New members are always athletes. Higher roles only come from an admin: a verified-email
     // role invite (claimed below), admin.setRole, or the grantAdmin CLI. Never from the client.
-    const userId = existing?._id ?? (await ctx.db.insert('users', { ...fields, role: 'athlete' }))
+    const userId =
+      existing?._id ?? (await ctx.db.insert('users', { ...fields, nameKey, role: 'athlete' }))
     if (
       existing &&
       (existing.name !== fields.name ||
         existing.email !== fields.email ||
         existing.firstName !== firstName ||
-        existing.lastName !== lastName)
+        existing.lastName !== lastName ||
+        existing.nameKey !== nameKey)
     ) {
-      await ctx.db.patch(existing._id, { name: fields.name, email: fields.email, firstName, lastName })
+      await ctx.db.patch(existing._id, {
+        name: fields.name,
+        email: fields.email,
+        firstName,
+        lastName,
+        nameKey,
+      })
     }
     // Class invites wait for this email; claim them in the same transaction.
     if (fields.email) await claimInvites(ctx, userId, fields.email)
