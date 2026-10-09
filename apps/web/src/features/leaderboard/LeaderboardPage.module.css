@@ -38,3 +38,10 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+
+.athlete {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

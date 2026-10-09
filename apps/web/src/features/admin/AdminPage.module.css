@@ -126,19 +126,6 @@
   gap: var(--s-3);
 }
 
-.avatar {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
 .name {
   display: flex;
   align-items: center;

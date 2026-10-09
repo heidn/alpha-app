@@ -5,6 +5,7 @@ import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
 import { useClassPick } from '../classes/useClassPick.ts'
 import { hrefFor } from '../shell/useRoute.ts'
+import { Avatar } from '../ui/Avatar.tsx'
 import ui from '../ui/ui.module.css'
 import { isoDate } from '../workouts/program.ts'
 import styles from './LeaderboardPage.module.css'
@@ -188,8 +189,11 @@ function Board({ item }: { item: Item }) {
                   <tr key={e.logId}>
                     <td className={styles.rank}>{e.sortValue === undefined ? '–' : place[i]}</td>
                     <td>
-                      {e.name}{' '}
-                      {!e.signedUp && <span className={ui.pill}>Not signed up</span>}
+                      <span className={styles.athlete}>
+                        <Avatar name={e.name} imageUrl={e.imageUrl} size={28} />
+                        {e.name}
+                        {!e.signedUp && <span className={ui.pill}>Not signed up</span>}
+                      </span>
                     </td>
                     <td>
                       <span className={styles.score}>{formatScore(e.sets, e.unit)}</span>

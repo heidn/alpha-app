@@ -32,15 +32,30 @@ function claim(value: JSONValue | undefined) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
+// Profile photos are Clerk-hosted; anything else is refused so the app never renders a
+// user-supplied URL from another host (tracking pixels etc.).
+const IMAGE_HOSTS = new Set(['img.clerk.com'])
+function clerkImage(value: unknown) {
+  if (typeof value !== 'string' || value.length > 2000) return undefined
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && IMAGE_HOSTS.has(url.hostname) ? url.href : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export const current = query({
   args: {},
   handler: async (ctx) => getCurrentUser(ctx),
 })
 
 // Called by the client after sign-in; creates/refreshes the user from the Clerk JWT.
+// imageUrl: the Clerk photo (null = no photo; omitted = leave as is). The token can't tell a real
+// photo from Clerk's generated default, so the client sends it from `user.hasImage`.
 export const store = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { imageUrl: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error('Unauthenticated')
     let existing = await getCurrentUser(ctx)
@@ -55,6 +70,8 @@ export const store = mutation({
       tokenIdentifier: identity.tokenIdentifier,
     }
     const nameKey = norm(fields.name)
+    const imageUrl =
+      args.imageUrl === undefined ? existing?.imageUrl : (clerkImage(args.imageUrl) ?? undefined)
     if (!existing) {
       // Imported (Wodify) athletes wait unclaimed; take one over only when the name is unambiguous.
       // Admins fix mismatches with wodifyImport.mergeImportedUser.
@@ -71,14 +88,16 @@ export const store = mutation({
     // New members are always athletes. Higher roles only come from an admin: a verified-email
     // role invite (claimed below), admin.setRole, or the grantAdmin CLI. Never from the client.
     const userId =
-      existing?._id ?? (await ctx.db.insert('users', { ...fields, nameKey, role: 'athlete' }))
+      existing?._id ??
+      (await ctx.db.insert('users', { ...fields, nameKey, imageUrl, role: 'athlete' }))
     if (
       existing &&
       (existing.name !== fields.name ||
         existing.email !== fields.email ||
         existing.firstName !== firstName ||
         existing.lastName !== lastName ||
-        existing.nameKey !== nameKey)
+        existing.nameKey !== nameKey ||
+        existing.imageUrl !== imageUrl)
     ) {
       await ctx.db.patch(existing._id, {
         name: fields.name,
@@ -86,6 +105,7 @@ export const store = mutation({
         firstName,
         lastName,
         nameKey,
+        imageUrl,
       })
     }
     // Class invites wait for this email; claim them in the same transaction.

@@ -6,19 +6,12 @@ import type { Id } from '../../../../../convex/_generated/dataModel'
 import { ROLES, type Role } from '../../../../../convex/roles'
 import styles from './AdminPage.module.css'
 import { InvitePanel } from './InvitePanel.tsx'
+import { Avatar } from '../ui/Avatar.tsx'
 import { RoleBadge } from './RoleBadge.tsx'
 import { ROLE_LABEL } from './roleLabel.ts'
 import ui from '../ui/ui.module.css'
 
 const PAGE_SIZE = 50
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
 
 export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
   const { results, status, loadMore } = usePaginatedQuery(
@@ -124,9 +117,7 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
                     <tr key={u._id}>
                       <td>
                         <div className={styles.user}>
-                          <span className={styles.avatar} aria-hidden>
-                            {initials(u.name)}
-                          </span>
+                          <Avatar name={u.name} imageUrl={u.imageUrl} />
                           <div>
                             <div className={styles.name}>
                               {u.name}
