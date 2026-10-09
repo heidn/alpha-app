@@ -6,16 +6,28 @@ export const weightUnitV = v.union(v.literal('kg'), v.literal('lb'))
 export const distanceUnitV = v.union(v.literal('m'), v.literal('km'), v.literal('mi'))
 
 // MemberSet field names a score type can ask for.
-export const SCORE_FIELDS = ['reps', 'weight', 'timeSeconds', 'rounds', 'distance', 'done'] as const
+export const SCORE_FIELDS = ['reps', 'weight', 'timeSeconds', 'rounds', 'distance', 'calories', 'done'] as const
 export const scoreFieldV = v.union(
   v.literal('reps'),
   v.literal('weight'),
   v.literal('timeSeconds'),
   v.literal('rounds'),
   v.literal('distance'),
+  v.literal('calories'),
   v.literal('done'),
 )
 export const sortV = v.union(v.literal('asc'), v.literal('desc'))
+
+export const bookingStatusV = v.union(v.literal('booked'), v.literal('signedIn'))
+
+// A 1RM the app can't derive from logged sets: a coach-run test or one carried over from the old app.
+// Logged singles are read from memberLogs instead, so they're never stored twice.
+export const recordedMaxV = v.object({
+  exerciseId: v.id('exercises'),
+  weight: v.number(),
+  unit: weightUnitV,
+  achievedAt: v.string(), // "2026-05-12"
+})
 
 // Present = members log this item; absent = display-only.
 export const scoreV = v.object({ scoreTypeId: v.id('scoreTypes'), title: v.string() })
@@ -48,6 +60,7 @@ export const programSectionV = v.object({
   sectionId: v.id('sections'),
   notes: v.optional(v.string()),
   score: v.optional(scoreV),
+  timeCapSec: v.optional(v.number()), // AMRAP length / For Time cap
   exercises: v.array(programExerciseV),
 })
 
@@ -60,9 +73,14 @@ export const memberSetV = v.object({
   timeSeconds: v.optional(v.number()),
   rounds: v.optional(v.number()),
   distance: v.optional(v.number()),
+  calories: v.optional(v.number()),
   done: v.optional(v.boolean()),
 })
 
+// Where imported data came from; absent = made in this app.
+export const sourceV = v.literal('wodify')
+
+export type MemberSet = Infer<typeof memberSetV>
 export type ScoreField = Infer<typeof scoreFieldV>
 export type Prescription = Infer<typeof prescriptionV>
 export type ProgramSection = Infer<typeof programSectionV>

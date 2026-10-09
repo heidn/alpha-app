@@ -51,7 +51,9 @@ export const store = mutation({
       tokenIdentifier: identity.tokenIdentifier,
     }
     const existing = await getCurrentUser(ctx)
-    const userId = existing?._id ?? (await ctx.db.insert('users', fields))
+    // New members are always athletes. Higher roles only come from an admin: a verified-email
+    // role invite (claimed below), admin.setRole, or the grantAdmin CLI. Never from the client.
+    const userId = existing?._id ?? (await ctx.db.insert('users', { ...fields, role: 'athlete' }))
     if (
       existing &&
       (existing.name !== fields.name ||

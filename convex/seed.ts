@@ -39,6 +39,7 @@ const SCORE_TYPES: Omit<Doc<'scoreTypes'>, '_id' | '_creationTime'>[] = [
   { name: 'Each Round', fields: ['timeSeconds'], perSet: true, sort: 'asc' },
   { name: 'Checkmark', fields: ['done'], perSet: false, sort: 'desc' },
   { name: 'Distance', fields: ['distance'], perSet: false, sort: 'desc' },
+  { name: 'Max load', fields: ['weight'], perSet: false, sort: 'desc' },
 ]
 
 // `npx convex run seed:scoreTypes` (idempotent)

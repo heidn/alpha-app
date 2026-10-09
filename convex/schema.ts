@@ -1,9 +1,12 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 import {
+  bookingStatusV,
   distanceUnitV,
   genderV,
+  recordedMaxV,
   memberSetV,
+  sourceV,
   programV,
   scoreFieldV,
   sortV,
@@ -15,7 +18,8 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     email: v.optional(v.string()),
-    tokenIdentifier: v.string(),
+    // Absent = imported athlete who hasn't signed in yet (claimed by name in users.store).
+    tokenIdentifier: v.optional(v.string()),
     // Absent = 'athlete'. Optional so existing rows stay valid.
     role: v.optional(roleValidator),
     firstName: v.optional(v.string()),
@@ -23,8 +27,15 @@ export default defineSchema({
     phone: v.optional(v.string()),
     // Decides which Rx weight/distance the member sees.
     gender: v.optional(genderV),
+    // Wodify import: Client ID, and the normalized name an unclaimed athlete is matched on.
+    wodifyId: v.optional(v.string()),
+    nameKey: v.optional(v.string()),
+    // Coach-tested / imported 1RMs, one per exercise. Changes rarely, so it's fine on this widely-read doc.
+    maxes: v.optional(v.array(recordedMaxV)),
   })
     .index('by_tokenIdentifier', ['tokenIdentifier'])
+    .index('by_wodifyId', ['wodifyId'])
+    .index('by_nameKey', ['nameKey'])
     .index('by_email', ['email'])
     .index('by_role', ['role']),
 
@@ -52,6 +63,7 @@ export default defineSchema({
     startTime: v.string(), // "06:00", gym local time
     durationMin: v.optional(v.number()),
     daysOfWeek: v.array(v.number()), // 0 = Sun … 6 = Sat
+    capacity: v.optional(v.number()), // absent = open (no cap)
   })
     .index('by_gym', ['gymId'])
     .index('by_coach', ['coachId']),
@@ -63,6 +75,17 @@ export default defineSchema({
   })
     .index('by_class_user', ['classId', 'userId'])
     .index('by_user', ['userId']),
+
+  // A member's spot in one class on one date; signedIn = attended. One per member per date.
+  // Own table: per-day rows would grow without bound on users, and check-ins are hot writes.
+  bookings: defineTable({
+    userId: v.id('users'),
+    classId: v.id('classes'),
+    date: v.string(), // "2026-10-07", gym local time
+    status: bookingStatusV,
+  })
+    .index('by_user_date', ['userId', 'date'])
+    .index('by_class_date', ['classId', 'date']),
 
   // Invite for someone without an account; claimed in users.store on sign-in.
   classInvites: defineTable({
@@ -116,6 +139,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     durationMin: v.optional(v.number()),
     program: programV,
+    source: v.optional(sourceV), // imported; removeImported deletes these
   }).index('by_class_date', ['classId', 'date']),
 
   // One result per member per scored item. Hot writes, so kept apart from workouts.
@@ -133,6 +157,7 @@ export default defineSchema({
     mediaUrl: v.optional(v.string()), // stored only; never fetched server-side
     sortValue: v.optional(v.number()),
     sets: v.array(memberSetV), // non-perSet score types use one set
+    source: v.optional(sourceV),
   })
     .index('by_workout_item_score', ['workoutId', 'itemKey', 'sortValue'])
     .index('by_user_workout', ['userId', 'workoutId'])
