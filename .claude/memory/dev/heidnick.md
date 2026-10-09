@@ -1,5 +1,5 @@
 # heidnick
-- Open: PR #7 (Clerk) → then #8 (library + workouts, stacked on #7). #5/#6 merged. Merge needs a human (auto mode blocks merges).
-- Not clicked through in browser yet (check light/dark + 360px).
-- Clerk session token customized (first_name, last_name, email, email_verified) — done 2026-10-07.
-- Next: athlete home (`workouts.myDay`), result logging + leaderboard (memberLogs mutations).
+- Task: Wodify import, split into stacked PRs: wodify-1-schema (incl. Joe's schema-athlete commits) → 2-claim → 3-import → 4-ui. Merge in order; old heidnick/wodify-results kept until merged. Worktree ../alpha-app-wodify-import.
+- Joe's schema-athlete commits ride in PR 1: confirm with Joe, then he closes his branch.
+- Not run end-to-end yet: #/imports → JSON → class → Import; re-import = 0 changes.
+- Next: rebase heidnick/onboarding (pre-monorepo paths) after wodify merges. Strength export, bookings, timeCapSec.

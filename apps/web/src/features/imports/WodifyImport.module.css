@@ -1,0 +1,17 @@
+.summary {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
