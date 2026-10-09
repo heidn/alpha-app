@@ -5,7 +5,7 @@
 - Web: `apps/web/src/`. Lint: oxlint. Dev URL http://localhost:5173.
 - Convex backend in `convex/`, one file per domain (`convex/<domain>.ts`).
 - Auth: `ClerkProvider` → `ConvexProviderWithClerk` (`apps/web/src/main.tsx`). Convex env `CLERK_FRONTEND_API_URL` = Clerk Frontend API URL.
-- Users: `users` table keyed by `tokenIdentifier`; client calls `api.users.store` after sign-in (`apps/web/src/features/auth/useStoreUser.ts`). No `tokenIdentifier` = imported athlete not signed in yet; `store` claims it when exactly one user has the same `nameKey` (norm(name), kept on all users).
+- Users: `users` table keyed by `tokenIdentifier`; client calls `api.users.store` after sign-in (`apps/web/src/features/auth/useStoreUser.ts`); it passes `imageUrl` (Clerk photo, `user.hasImage ? imageUrl : null`, omitted = keep) → `users.imageUrl`, img.clerk.com only. UI avatar: `features/ui/Avatar`. No `tokenIdentifier` = imported athlete not signed in yet; `store` claims it when exactly one user has the same `nameKey` (norm(name), kept on all users).
 - Auth checks: `getCurrentUser(ctx)` / `requireUser(ctx)` / `requireRole(ctx, ...roles)` in `convex/users.ts`.
 - Roles: `users.role` optional `admin|coach|athlete` (absent = athlete, via `roleOf`); defs in `convex/roles.ts` (no server imports, client-safe). Admin UI `apps/web/src/features/admin/`; first admin via `npx convex run admin:grantAdmin`. Admin invites (`convex/invites.ts`): role held in `userInvites`, claimed in `users.store` if email verified.
 - Frontend features: `apps/web/src/features/<feature>/`. UI conventions: `.claude/skills/react-ux` skill (load before UI work).

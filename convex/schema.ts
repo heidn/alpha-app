@@ -32,6 +32,8 @@ export default defineSchema({
     nameKey: v.optional(v.string()),
     // Coach-tested / imported 1RMs, one per exercise. Changes rarely, so it's fine on this widely-read doc.
     maxes: v.optional(v.array(recordedMaxV)),
+    // Clerk profile photo URL (img.clerk.com only). Absent = show initials.
+    imageUrl: v.optional(v.string()),
   })
     .index('by_tokenIdentifier', ['tokenIdentifier'])
     .index('by_wodifyId', ['wodifyId'])

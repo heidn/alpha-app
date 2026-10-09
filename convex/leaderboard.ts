@@ -99,6 +99,7 @@ export const day = query({
               logId: l._id,
               name: u.name,
               signedUp: !!u.tokenIdentifier,
+              imageUrl: u.imageUrl,
               isRx: l.isRx,
               unit: l.unit,
               sortValue: l.sortValue,
