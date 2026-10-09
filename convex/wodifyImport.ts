@@ -5,23 +5,26 @@ import { mutation, query, type MutationCtx } from './_generated/server'
 import type { ProgramSection } from './domain'
 import { requireRole } from './users'
 import {
+  isEmptyScore,
   isScoreTypeName,
   itemKey,
   norm,
+  parseFormat,
   parseResults,
   SCORE_TYPES,
   sortMetric,
   stripHtml,
+  totalSet,
   type ScoreTypeName,
 } from './wodify'
 
-// Wodify performance results -> users, workouts, memberLogs. Admin-only.
+// Wodify performance results -> users, workouts, memberLogs, bookings (attendance). Admin-only.
 // The client sends a file in small chunks; every call is an idempotent upsert, so a whole file
 // can be re-run (or resumed after a failure) without duplicating anything. A gym's history can't
 // fit one transaction, so this is deliberately chunked rather than one mutation.
 
 const SECTION = 'Metcon'
-const MAX = { athletes: 100, days: 50, logs: 200, sections: 20 }
+const MAX = { athletes: 100, days: 50, logs: 200, visits: 200, sections: 20 }
 
 function limit(n: number, max: number, what: string) {
   if (n > max) throw new ConvexError(`Send at most ${max} ${what} at a time`)
@@ -129,13 +132,17 @@ const sectionFor = (
   sectionId: Id<'sections'>,
   c: { name: string; description: string },
   scoreTypeId: Id<'scoreTypes'>,
-): ProgramSection => ({
-  key,
-  sectionId,
-  notes: stripHtml(c.description) || undefined,
-  score: { scoreTypeId, title: c.name.trim() },
-  exercises: [],
-})
+): ProgramSection => {
+  const notes = stripHtml(c.description)
+  return {
+    key,
+    sectionId,
+    notes: notes || undefined,
+    score: { scoreTypeId, title: c.name.trim() },
+    ...parseFormat(notes),
+    exercises: [],
+  }
+}
 
 // One workout per class + date. Imported days are rebuilt from the file; coach-made days only
 // gain the components they're missing.
@@ -227,6 +234,7 @@ export const upsertLogs = mutation({
     await requireRole(ctx, 'admin')
     limit(logs.length, MAX.logs, 'results')
     const workouts = new Map<Id<'workouts'>, Doc<'workouts'> | null>()
+    const perSet = new Map<Id<'scoreTypes'>, boolean>()
     let created = 0
     let updated = 0
     let skipped = 0
@@ -234,11 +242,16 @@ export const upsertLogs = mutation({
       if (!workouts.has(l.workoutId)) workouts.set(l.workoutId, await ctx.db.get(l.workoutId))
       const workout = workouts.get(l.workoutId)
       const item = workout?.program.find((s) => s.key === l.itemKey)
-      const { sets, unit } = parseResults(l.results)
-      if (!workout || !item?.score || !sets.length || !(await ctx.db.get(l.userId))) {
+      const parsed = parseResults(l.results)
+      if (!workout || !item?.score || isEmptyScore(parsed.sets) || !(await ctx.db.get(l.userId))) {
         skipped++
         continue
       }
+      const { scoreTypeId } = item.score
+      if (!perSet.has(scoreTypeId)) perSet.set(scoreTypeId, (await ctx.db.get(scoreTypeId))?.perSet ?? true)
+      // A total-scored component keeps one set even when this athlete logged every round.
+      const sets = perSet.get(scoreTypeId) ? parsed.sets : totalSet(parsed.sets)
+      const unit = parsed.unit
       const fields = {
         scoreTypeId: item.score.scoreTypeId,
         unit,
@@ -281,6 +294,32 @@ export const upsertLogs = mutation({
   },
 })
 
+// Attendance: one signed-in booking per athlete per day they have a result row, scored or not.
+// A booking made in the app for that day is left alone.
+export const upsertVisits = mutation({
+  args: {
+    classId: v.id('classes'),
+    visits: v.array(v.object({ userId: v.id('users'), date: v.string() })),
+  },
+  handler: async (ctx, { classId, visits }) => {
+    await requireRole(ctx, 'admin')
+    limit(visits.length, MAX.visits, 'visits')
+    if (!(await ctx.db.get(classId))) throw new ConvexError('Class not found')
+    let created = 0
+    for (const { userId, date } of visits) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ConvexError(`Bad date "${date}"`)
+      const existing = await ctx.db
+        .query('bookings')
+        .withIndex('by_user_date', (q) => q.eq('userId', userId).eq('date', date))
+        .first()
+      if (existing || !(await ctx.db.get(userId))) continue
+      await ctx.db.insert('bookings', { userId, classId, date, status: 'signedIn', source: 'wodify' })
+      created++
+    }
+    return { created }
+  },
+})
+
 // Undo / dev reset: deletes this class's imported workouts and imported logs, a page at a time.
 // A workout that also has logs made in the app keeps its row (only imported logs go).
 export const removeImported = mutation({
@@ -312,6 +351,25 @@ export const removeImported = mutation({
   },
 })
 
+// Undo / dev reset for imported attendance, a page at a time.
+export const removeImportedVisits = mutation({
+  args: { classId: v.id('classes'), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { classId, paginationOpts }) => {
+    await requireRole(ctx, 'admin')
+    const page = await ctx.db
+      .query('bookings')
+      .withIndex('by_class_date', (q) => q.eq('classId', classId))
+      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 500) })
+    let visits = 0
+    for (const b of page.page) {
+      if (b.source !== 'wodify') continue
+      await ctx.db.delete(b._id)
+      visits++
+    }
+    return { isDone: page.isDone, cursor: page.continueCursor, visits }
+  },
+})
+
 // Classes to import into (a gym's programming is shared by all its class times).
 export const classOptions = query({
   args: {},
@@ -335,8 +393,8 @@ export const unclaimed = query({
   },
 })
 
-// Manual fix when a name didn't match: move an unclaimed athlete's logs onto a real user, then
-// delete the placeholder. Call until done (moves up to 200 logs per call).
+// Manual fix when a name didn't match: move an unclaimed athlete's logs and bookings onto a real
+// user, then delete the placeholder. Call until done (moves up to 200 of each per call).
 export const mergeImportedUser = mutation({
   args: { importedUserId: v.id('users'), userId: v.id('users') },
   handler: async (ctx, { importedUserId, userId }) => {
@@ -360,7 +418,19 @@ export const mergeImportedUser = mutation({
       if (clash) await ctx.db.delete(l._id)
       else await ctx.db.patch(l._id, { userId })
     }
-    if (logs.length === 200) return { done: false }
+    const bookings = await ctx.db
+      .query('bookings')
+      .withIndex('by_user_date', (q) => q.eq('userId', importedUserId))
+      .take(200)
+    for (const b of bookings) {
+      const clash = await ctx.db
+        .query('bookings')
+        .withIndex('by_user_date', (q) => q.eq('userId', userId).eq('date', b.date))
+        .first()
+      if (clash) await ctx.db.delete(b._id)
+      else await ctx.db.patch(b._id, { userId })
+    }
+    if (logs.length === 200 || bookings.length === 200) return { done: false }
     if (from.wodifyId && !to.wodifyId) await ctx.db.patch(to._id, { wodifyId: from.wodifyId })
     await ctx.db.delete(from._id)
     return { done: true }

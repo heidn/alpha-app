@@ -14,8 +14,9 @@
 
 ## Domain model (`convex/schema.ts`, validators in `convex/domain.ts`)
 - Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.
-- `workouts` (one per class+date) embed `program`: sections→exercises→prescriptions, order = array order, items have stable client `key`; `score` present = scored item.
+- `workouts` (one per class+date) embed `program`: sections→exercises→prescriptions, order = array order, items have stable client `key`; `score` present = scored item; metcon sections may carry `format` (forTime|amrap|emom|intervals) + `timeCapSec`.
 - `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts` (gym staff = `gymMembers.staff`).
+- Attendance = `bookings` (status signedIn), one per member per date; Wodify import writes one per athlete-day (source wodify), no time slot.
 - Wodify import (`convex/wodifyImport.ts`, `#/imports`, admin): performance-results JSON parsed in browser → chunked idempotent upserts (athletes → workouts → memberLogs); imported rows have `source: 'wodify'`, item key `wodify:<norm(component)>`; metcon = section-level score, notes = stripped HTML description. Strength export next, same path.
 - Client: routes `#/gyms[/:id]`, `#/classes/:id`, `#/library`, `#/workouts[/:id]`, `#/imports`; shared `apps/web/src/features/ui/` (ui.module.css, ErrorBanner, useRun).
 
