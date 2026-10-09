@@ -1,4 +1,4 @@
-import type { MemberSet, MetconFormat, ScoreField } from './domain'
+import type { MemberSet, MetconFormat, Prescription, ScoreField } from './domain'
 
 // Pure Wodify parsing (no server imports): result strings -> sets, result types -> score types.
 
@@ -8,8 +8,25 @@ type DistanceUnit = 'm' | 'km' | 'mi'
 
 export const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase()
 
+// Convex returns object fields sorted and drops undefined ones, so compare that way.
+const canonical = (x: unknown): unknown =>
+  Array.isArray(x)
+    ? x.map(canonical)
+    : x && typeof x === 'object'
+      ? Object.fromEntries(
+          Object.entries(x)
+            .filter(([, v]) => v !== undefined)
+            .sort(([a], [b]) => (a < b ? -1 : 1))
+            .map(([k, v]) => [k, canonical(v)]),
+        )
+      : x
+export const sameData = (a: unknown, b: unknown) =>
+  JSON.stringify(canonical(a)) === JSON.stringify(canonical(b))
+
 // Program item key of an imported component, stable across re-imports.
 export const itemKey = (component: string) => `wodify:${norm(component)}`
+// The one section holding a day's imported lifts.
+export const STRENGTH_KEY = 'wodify-strength'
 
 const num = (s: string) => Number(s.replace(/,/g, ''))
 const weightUnit = (u: string): WeightUnit => (u.toLowerCase().startsWith('kg') ? 'kg' : 'lb')
@@ -71,6 +88,7 @@ export function parseResult(raw: string): Parsed | null {
 
 // All rows of one result -> numbered sets. Mixed units fail (needs a human).
 // Blank rows are dropped: Wodify "Each Round" exports often put the total on one row, rest empty.
+// So are 0 lb sets: Wodify's prefilled lift rows the athlete never touched.
 export function parseResults(results: string[]) {
   const sets: MemberSet[] = []
   const warnings: string[] = []
@@ -83,7 +101,7 @@ export function parseResults(results: string[]) {
     }
     if (p.unit && unit && p.unit !== unit) warnings.push(`Mixed units in "${r}"`)
     unit = p.unit ?? unit
-    for (const s of p.sets) sets.push({ setNumber: sets.length + 1, ...s })
+    for (const s of p.sets) if (s.weight !== 0) sets.push({ setNumber: sets.length + 1, ...s })
   }
   return { sets, unit, warnings }
 }
@@ -104,6 +122,30 @@ export function totalSet(sets: MemberSet[]): MemberSet[] {
   }
   if (sets.some((s) => s.done)) total.done = true
   return [total]
+}
+
+// "5x5 @ 70%", "4x2 @ 75-80%", "6x1 @ 90-95+%", "3x3 @ RPE8", "8x1 up to RPE8.5", "3 @ 80%", "5x5"
+const REP_LINE =
+  /^(?:(\d+)\s*x\s*)?(\d+)(?:\s*(?:@|up to)\s*(RPE)?\s*(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\+?\s*(%)?)?$/i
+
+// Wodify "Rep Scheme" -> one prescription per line; lines we can't structure stay as text
+// ("Build to a heavy single", "EMOM10", "*rest 2:00*").
+export function parseRepScheme(text: string): Prescription[] {
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = REP_LINE.exec(line)
+      // Needs a load unless it's plain "SxR"; RPE and % are exclusive.
+      if (!m || (m[4] ? !m[3] === !m[6] : !m[1])) return { customText: line.slice(0, 200) }
+      const [low, high] = [m[4] ? Number(m[4]) : undefined, m[5] ? Number(m[5]) : undefined]
+      return {
+        sets: m[1] ? Number(m[1]) : undefined,
+        reps: Number(m[2]),
+        ...(m[3] ? { rpe: low, rpeMax: high } : { percentage: low, percentageMax: high }),
+      }
+    })
 }
 
 const mins = (m: string, s = '0') => Number(m) * 60 + Number(s)
@@ -177,7 +219,7 @@ export function scoreTypeFor(resultType: string, results: string[]): ScoreTypeNa
   if (t === 'checkmark') return 'Checkmark'
   if (t === 'distance') return 'Distance'
   if (t === 'calories') return 'Calories'
-  if (t === 'weight') return 'Weight per set'
+  if (t === 'weight' || t.startsWith('weightlifting')) return 'Weight per set'
   if (t !== 'each round') return undefined
   const sets = parseResults(results).sets
   const total = results.filter((x) => x.trim()).length === 1

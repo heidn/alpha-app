@@ -43,7 +43,9 @@ export const prescriptionV = v.object({
   femaleDistance: v.optional(v.number()),
   distanceUnit: v.optional(distanceUnitV),
   percentage: v.optional(v.number()),
+  percentageMax: v.optional(v.number()), // range: 75-80% = percentage 75, percentageMax 80
   rpe: v.optional(v.number()),
+  rpeMax: v.optional(v.number()),
   customText: v.optional(v.string()),
 })
 
