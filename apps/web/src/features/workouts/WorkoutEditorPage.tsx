@@ -87,7 +87,7 @@ function Editor({ workout }: { workout: Workout }) {
       <header className={ui.header}>
         <div>
           <a className={ui.crumb} href={hrefFor({ name: 'workouts' })}>
-            ← Workouts
+            ← Program
           </a>
           <h1>{draft.title || 'Untitled workout'}</h1>
           <p className={ui.sub}>

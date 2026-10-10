@@ -7,13 +7,38 @@ import { hrefFor, navigate } from '../shell/useRoute.ts'
 import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
-import { isoDate, weekDays } from './program.ts'
+import { addDays, isoDate, weekDays } from './program.ts'
 import styles from './WorkoutsPage.module.css'
+
+// Week being viewed (its Monday), kept for the tab so returning from the editor doesn't reset it.
+const WEEK_KEY = 'workouts.week'
+const readWeek = () => {
+  try {
+    return sessionStorage.getItem(WEEK_KEY)
+  } catch {
+    return null
+  }
+}
 
 export function WorkoutsPage() {
   const { gyms, gym, classes, cls, loading, pickGym, pickClass } = useClassPick()
-  const [offset, setOffset] = useState(0)
   const [now] = useState(() => new Date())
+  const [weekStart, setWeekStart] = useState(() => {
+    const saved = readWeek()
+    return saved ? new Date(`${saved}T00:00:00`) : weekDays(now, 0)[0]
+  })
+  const thisMonday = weekDays(now, 0)[0]
+  // Rounded: a DST change makes the gap between Mondays an hour off.
+  const offset = Math.round((weekStart.getTime() - thisMonday.getTime()) / (7 * 86_400_000))
+  const setOffset = (next: (o: number) => number) => {
+    const start = weekDays(now, next(offset))[0]
+    setWeekStart(start)
+    try {
+      sessionStorage.setItem(WEEK_KEY, isoDate(start))
+    } catch {
+      // Storage unavailable: the week just won't survive navigation.
+    }
+  }
 
   const days = weekDays(now, offset)
   const range = { from: isoDate(days[0]), to: isoDate(days[6]) }
@@ -22,7 +47,7 @@ export function WorkoutsPage() {
     <div className={ui.page}>
       <header className={ui.header}>
         <div>
-          <h1>Workouts</h1>
+          <h1>Program</h1>
           <p className={ui.sub}>
             Program each class day. Athletes in the class see it automatically.
           </p>
@@ -70,6 +95,7 @@ export function WorkoutsPage() {
           </p>
         ) : (
           <Week
+            key={`${cls._id}-${range.from}`}
             classId={cls._id}
             classDays={cls.daysOfWeek}
             days={days}
@@ -84,7 +110,7 @@ export function WorkoutsPage() {
           <button
             type="button"
             className={ui.btn}
-            onClick={() => setOffset(0)}
+            onClick={() => setOffset(() => 0)}
             disabled={offset === 0}
           >
             This week
@@ -109,11 +135,40 @@ type WeekProps = {
 function Week({ classId, classDays, days, range, today }: WeekProps) {
   const workouts = useQuery(api.workouts.listForClassRange, { classId, ...range })
   const create = useMutation(api.workouts.create)
+  const copyDay = useMutation(api.workouts.copyDay)
+  const copyWeek = useMutation(api.workouts.copyWeek)
   const { run, pending, error, clearError } = useRun()
+  const [copying, setCopying] = useState<{ id: Id<'workouts'>; to: string } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const onCreate = async (date: string) => {
     const r = await run(() => create({ classId, date, title: 'WOD' }))
     if (r.ok) navigate({ name: 'workout', id: r.value })
+  }
+  const onCopyDay = async () => {
+    if (!copying) return
+    const r = await run(() => copyDay({ workoutId: copying.id, toDate: copying.to }))
+    if (r.ok) {
+      setCopying(null)
+      setNotice(`Copied to ${new Date(`${copying.to}T00:00:00`).toLocaleDateString()}.`)
+    }
+  }
+  const onCopyWeek = async () => {
+    const lastMonday = addDays(days[0], -7)
+    if (!window.confirm('Copy last week’s workouts into the empty days of this week?')) return
+    const r = await run(() =>
+      copyWeek({ classId, fromDate: isoDate(lastMonday), toDate: range.from }),
+    )
+    if (r.ok) {
+      const { copied, skipped } = r.value
+      const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+      setNotice(
+        copied + skipped === 0
+          ? 'Last week has no workouts to copy.'
+          : `Copied ${plural(copied, 'workout')}` +
+              (skipped ? `, skipped ${plural(skipped, 'day')} already programmed.` : '.'),
+      )
+    }
   }
 
   // Days the class runs, plus any off-day that still has a workout (e.g. imported).
@@ -125,6 +180,24 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
   return (
     <>
       <ErrorBanner error={error} onDismiss={clearError} />
+      <div className={styles.weekTools}>
+        {notice && (
+          <span className={ui.muted} role="status">
+            {notice}
+          </span>
+        )}
+        <button
+          type="button"
+          className={`${ui.btn} ${ui.btnSmall}`}
+          disabled={pending || workouts === undefined}
+          onClick={() => void onCopyWeek()}
+        >
+          Copy last week
+        </button>
+      </div>
+      {shown.length === 0 && workouts !== undefined && (
+        <p className={ui.empty}>This class has no scheduled days. Set them on the class page.</p>
+      )}
       <ol className={styles.week} style={{ '--cols': shown.length || 1 } as CSSProperties}>
         {shown.map((d) => {
           const date = isoDate(d)
@@ -155,7 +228,51 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
                     </span>
                   ))}
                 </a>
-              ) : (
+              ) : null}
+              {workout && date <= today && (
+                <a className={styles.results} href={hrefFor({ name: 'leaderboard', date })}>
+                  Results
+                </a>
+              )}
+              {workout && copying?.id !== workout._id && (
+                <button
+                  type="button"
+                  className={`${ui.btn} ${ui.btnSmall} ${styles.dayAction}`}
+                  onClick={() => setCopying({ id: workout._id, to: isoDate(addDays(d, 7)) })}
+                >
+                  Copy to…
+                </button>
+              )}
+              {workout && copying?.id === workout._id && (
+                <div className={styles.copyTo}>
+                  <label>
+                    <span className="visually-hidden">Copy to date</span>
+                    <input
+                      type="date"
+                      className={ui.input}
+                      value={copying.to}
+                      onChange={(e) => setCopying({ ...copying, to: e.target.value })}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={`${ui.btnPrimary} ${ui.btnSmall}`}
+                    disabled={pending || !copying.to || copying.to === date}
+                    title={copying.to === date ? 'Pick another day' : undefined}
+                    onClick={() => void onCopyDay()}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    className={`${ui.btn} ${ui.btnSmall}`}
+                    onClick={() => setCopying(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {workouts !== undefined && !workout && (
                 <button
                   type="button"
                   className={`${ui.btn} ${ui.btnSmall}`}

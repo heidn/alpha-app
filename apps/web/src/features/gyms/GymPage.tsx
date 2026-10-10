@@ -7,15 +7,13 @@ import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
 import { GymForm, type GymValues } from './GymForm.tsx'
-import { MembersPanel } from './MembersPanel.tsx'
 import { StaffPanel } from './StaffPanel.tsx'
 
-const TABS = ['classes', 'staff', 'members'] as const
+const TABS = ['classes', 'staff'] as const
 type Tab = (typeof TABS)[number]
 const TAB_LABEL: Record<Tab, string> = {
   classes: 'Classes',
   staff: 'Staff',
-  members: 'Members',
 }
 
 export function GymPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
@@ -80,7 +78,6 @@ export function GymPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
 
       {tab === 'classes' && <ClassesPanel gymId={gym._id} />}
       {tab === 'staff' && <StaffPanel gymId={gym._id} isAdmin={isAdmin} />}
-      {tab === 'members' && <MembersPanel gymId={gym._id} />}
     </div>
   )
 }

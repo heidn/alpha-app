@@ -1,0 +1,12 @@
+.nav {
+  margin-bottom: var(--s-5);
+}
+
+.item {
+  text-decoration: none;
+}
+
+.item[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}

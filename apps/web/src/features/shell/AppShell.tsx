@@ -14,20 +14,21 @@ import { OnboardingPage } from '../onboarding/OnboardingPage.tsx'
 import { WorkoutEditorPage } from '../workouts/WorkoutEditorPage.tsx'
 import { WorkoutsPage } from '../workouts/WorkoutsPage.tsx'
 import styles from './AppShell.module.css'
+import { SetupNav } from './SetupNav.tsx'
 import { hrefFor, useRoute, type Route } from './useRoute.ts'
 
-// Nav section a route belongs to (detail pages highlight their list).
+// Nav section a route belongs to (detail pages highlight their list). Setup = gyms link.
 const SECTION: Record<Route['name'], Route['name']> = {
-  home: 'home',
-  admin: 'admin',
+  home: 'workouts', // staff land on Program
+  admin: 'gyms',
   gyms: 'gyms',
   gym: 'gyms',
   class: 'gyms',
   library: 'library',
   workouts: 'workouts',
   workout: 'workouts',
-  imports: 'imports',
-  leaderboard: 'leaderboard',
+  imports: 'gyms',
+  leaderboard: 'workouts',
 }
 
 export function AppShell() {
@@ -38,14 +39,13 @@ export function AppShell() {
   const isStaff = isAdmin || me?.role === 'coach'
 
   const links: { route: Route; label: string; show: boolean }[] = [
-    { route: { name: 'home' }, label: 'Home', show: true },
-    { route: { name: 'gyms' }, label: 'Gyms', show: isStaff },
-    { route: { name: 'workouts' }, label: 'Workouts', show: isStaff },
-    { route: { name: 'leaderboard' }, label: 'Leaderboard', show: isStaff },
+    { route: { name: 'home' }, label: 'Home', show: !isStaff },
+    { route: { name: 'workouts' }, label: 'Program', show: isStaff },
     { route: { name: 'library' }, label: 'Library', show: isStaff },
-    { route: { name: 'admin' }, label: 'Users', show: isAdmin },
-    { route: { name: 'imports' }, label: 'Imports', show: isAdmin },
+    { route: { name: 'gyms' }, label: 'Setup', show: isStaff },
   ]
+  const section = isStaff ? SECTION[route.name] : route.name
+  const inSetup = isStaff && section === 'gyms'
   // Profile (gender drives Rx) is required first. null = store() not finished yet.
   const needsOnboarding = me != null && !me.gender
   const forbidden = <p className={styles.forbidden}>You don’t have access to this page.</p>
@@ -68,7 +68,7 @@ export function AppShell() {
                   <a
                     href={hrefFor(l.route)}
                     className={styles.link}
-                    aria-current={SECTION[route.name] === l.route.name ? 'page' : undefined}
+                    aria-current={section === l.route.name ? 'page' : undefined}
                   >
                     {l.label}
                   </a>
@@ -81,9 +81,10 @@ export function AppShell() {
         </nav>
       </header>
       <main className={styles.main}>
+        {inSetup && !needsOnboarding && <SetupNav route={route} isAdmin={isAdmin} />}
         {me == null ? null : needsOnboarding ? (
           <OnboardingPage user={me} />
-        ) : route.name === 'home' ? (
+        ) : route.name === 'home' && !isStaff ? (
           <HomePage role={me.role} />
         ) : !isStaff || ((route.name === 'admin' || route.name === 'imports') && !isAdmin) ? (
           forbidden
@@ -97,12 +98,12 @@ export function AppShell() {
           <ClassPage id={route.id} />
         ) : route.name === 'library' ? (
           <LibraryPage isAdmin={isAdmin} />
-        ) : route.name === 'workouts' ? (
+        ) : route.name === 'workouts' || route.name === 'home' ? (
           <WorkoutsPage />
         ) : route.name === 'workout' ? (
           <WorkoutEditorPage id={route.id} />
         ) : route.name === 'leaderboard' ? (
-          <LeaderboardPage />
+          <LeaderboardPage date={route.date} />
         ) : route.name === 'imports' ? (
           <WodifyImportPage />
         ) : null}

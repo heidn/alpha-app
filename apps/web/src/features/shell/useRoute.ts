@@ -10,7 +10,7 @@ export type Route =
   | { name: 'workouts' }
   | { name: 'workout'; id: string }
   | { name: 'imports' }
-  | { name: 'leaderboard' }
+  | { name: 'leaderboard'; date?: string }
 
 const subscribe = (cb: () => void) => {
   window.addEventListener('hashchange', cb)
@@ -24,7 +24,7 @@ const parse = (hash: string): Route => {
   if (a === 'gyms') return b ? { name: 'gym', id: b } : { name: 'gyms' }
   if (a === 'classes' && b) return { name: 'class', id: b }
   if (a === 'imports') return { name: 'imports' }
-  if (a === 'leaderboard') return { name: 'leaderboard' }
+  if (a === 'leaderboard') return { name: 'leaderboard', date: b || undefined }
   if (a === 'workouts') return b ? { name: 'workout', id: b } : { name: 'workouts' }
   return { name: 'home' }
 }
@@ -39,6 +39,8 @@ export const hrefFor = (route: Route): string => {
       return `#/classes/${route.id}`
     case 'workout':
       return `#/workouts/${route.id}`
+    case 'leaderboard':
+      return route.date ? `#/leaderboard/${route.date}` : '#/leaderboard'
     default:
       return `#/${route.name}`
   }

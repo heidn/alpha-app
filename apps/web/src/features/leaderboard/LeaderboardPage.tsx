@@ -22,7 +22,7 @@ const longDate = (date: string) =>
     year: 'numeric',
   })
 
-export function LeaderboardPage() {
+export function LeaderboardPage({ date }: { date?: string }) {
   const { gyms, gym, classes, cls, loading, pickGym, pickClass } = useClassPick()
   return (
     <div className={ui.page}>
@@ -72,15 +72,15 @@ export function LeaderboardPage() {
         ) : null}
       </section>
 
-      {cls && <ClassDay key={cls._id} classId={cls._id} />}
+      {cls && <ClassDay key={`${cls._id}-${date}`} classId={cls._id} initialDate={date} />}
     </div>
   )
 }
 
-function ClassDay({ classId }: { classId: Id<'classes'> }) {
+function ClassDay({ classId, initialDate }: { classId: Id<'classes'>; initialDate?: string }) {
   const [today] = useState(() => isoDate(new Date()))
   // null = not picked yet: open on today, or the latest workout before it.
-  const [picked, setDate] = useState<string | null>(null)
+  const [picked, setDate] = useState<string | null>(initialDate ?? null)
   const data = useQuery(api.leaderboard.day, {
     classId,
     date: picked ?? today,
