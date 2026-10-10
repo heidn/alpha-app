@@ -50,8 +50,17 @@ function Editor({ workout }: { workout: Workout }) {
   useEffect(() => {
     if (!dirty) return
     const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    // In-app links only change the hash (no beforeunload), so confirm those clicks too.
+    const guard = (e: MouseEvent) => {
+      const link = e.target instanceof Element ? e.target.closest('a[href^="#"]') : null
+      if (link && !window.confirm('Discard unsaved changes?')) e.preventDefault()
+    }
     window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
+    document.addEventListener('click', guard, true)
+    return () => {
+      window.removeEventListener('beforeunload', warn)
+      document.removeEventListener('click', guard, true)
+    }
   }, [dirty])
 
   const onSave = async () => {
@@ -90,31 +99,15 @@ function Editor({ workout }: { workout: Workout }) {
             })}
           </p>
         </div>
-        <div className={ui.formActions}>
-          {savedAt && !dirty && (
-            <span className={ui.muted} role="status">
-              Saved
-            </span>
-          )}
-          {dirty && <span className={ui.muted}>Unsaved changes</span>}
-          <button
-            type="button"
-            className={ui.btnDanger}
-            disabled={pending || logged.size > 0}
-            title={logged.size > 0 ? 'Members have logged results' : undefined}
-            onClick={() => void onDelete()}
-          >
-            Delete
-          </button>
-          <button
-            type="button"
-            className={ui.btnPrimary}
-            disabled={pending || !dirty}
-            onClick={() => void onSave()}
-          >
-            {pending ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+        <button
+          type="button"
+          className={ui.btnDanger}
+          disabled={pending || logged.size > 0}
+          title={logged.size > 0 ? 'Members have logged results' : undefined}
+          onClick={() => void onDelete()}
+        >
+          Delete
+        </button>
       </header>
 
       <ErrorBanner error={error} onDismiss={clearError} />
@@ -193,6 +186,21 @@ function Editor({ workout }: { workout: Workout }) {
           Add section
         </button>
       </section>
+
+      <div className={styles.saveBar}>
+        <span className={ui.muted} role="status">
+          {dirty ? 'Unsaved changes' : savedAt ? 'Saved' : 'No changes'}
+        </span>
+        <button
+          type="button"
+          className={ui.btnPrimary}
+          disabled={pending || !dirty}
+          title={!dirty ? 'Nothing to save' : undefined}
+          onClick={() => void onSave()}
+        >
+          {pending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
     </div>
   )
 }

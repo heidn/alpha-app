@@ -64,7 +64,28 @@ export const listForClassRange = query({
         q.eq('classId', classId).gte('date', checkDate(from)).lte('date', checkDate(to)),
       )
       .take(62)
-    return rows.map((w) => ({ _id: w._id, date: w.date, title: w.title }))
+    // Week-grid summary: per section, its first exercise or else the first line of its notes.
+    const firstExercise = (s: Program[number]) => s.exercises[0]?.exerciseId
+    const exerciseIds = [...new Set(rows.flatMap((w) => w.program.map(firstExercise)))].filter(
+      (id) => id !== undefined,
+    )
+    const exercises = await Promise.all(exerciseIds.map((id) => ctx.db.get(id)))
+    const exerciseName = new Map(exercises.flatMap((e) => (e ? [[e._id, e.name] as const] : [])))
+    const firstLine = (text: string | undefined) => text?.split('\n').find((l) => l.trim())?.trim()
+    const sectionLine = (s: Program[number]) => {
+      const id = firstExercise(s)
+      return (id && exerciseName.get(id)) || firstLine(s.notes)
+    }
+    return rows.map((w) => ({
+      _id: w._id,
+      date: w.date,
+      title: w.title,
+      summary: w.program
+        .map(sectionLine)
+        .filter((line): line is string => !!line)
+        .slice(0, 3)
+        .map((line) => (line.length > 60 ? `${line.slice(0, 57)}…` : line)),
+    }))
   },
 })
 

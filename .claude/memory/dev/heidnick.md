@@ -1,6 +1,6 @@
 # heidnick
-- Task: Wodify warmups. Import code on `heidnick/wodify-warmups` (worktree ../alpha-app-wodify-warmups). Plan: ~/.claude/plans/floofy-stirring-hollerith.md.
-- Next: connect Claude in Chrome → discovery in Wodify coach app (find warm-up component + JSON endpoint via network requests) → extract 546 days → `wodify_warmups_<date>.json` → import.
+- Task: coach UX backlog (from agent UX review). PR1 `heidnick/coach-ux-quick-wins` (worktree ../alpha-app-coach-ux): Users staff tab/counts, editor save bar + nav guard + remove confirms, week grid scheduled days + summary. Not browser-tested.
+- Next PRs: copy day / copy last week · set grid default cols · nav Program/Library/Setup (Leaderboard → per-day Results link, Home → Program) · drop gym Members tab, skip gym list if 1 · Imports unmatched summary · Library cleanup (importer names, usage, merge/archive) · section templates · Draft/Published week (schema) · paste entry into section notes.
 - Onboarding (#18) not browser-tested.
 
 ## TODO

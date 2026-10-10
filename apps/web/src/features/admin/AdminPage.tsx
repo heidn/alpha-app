@@ -1,4 +1,4 @@
-import { useMutation, usePaginatedQuery } from 'convex/react'
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { ConvexError } from 'convex/values'
 import { useState } from 'react'
 import { api } from '../../../../../convex/_generated/api'
@@ -7,18 +7,23 @@ import { ROLES, type Role } from '../../../../../convex/roles'
 import styles from './AdminPage.module.css'
 import { InvitePanel } from './InvitePanel.tsx'
 import { Avatar } from '../ui/Avatar.tsx'
-import { RoleBadge } from './RoleBadge.tsx'
 import { ROLE_LABEL } from './roleLabel.ts'
 import ui from '../ui/ui.module.css'
 
 const PAGE_SIZE = 50
+const TABS = { staff: 'Staff', all: 'Everyone' } as const
+type Tab = keyof typeof TABS
 
 export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
-  const { results, status, loadMore } = usePaginatedQuery(
+  const [tab, setTab] = useState<Tab>('staff')
+  const staff = useQuery(api.admin.listStaff)
+  const everyone = usePaginatedQuery(
     api.admin.listUsers,
-    {},
+    tab === 'all' ? {} : 'skip',
     { initialNumItems: PAGE_SIZE },
   )
+  const loading = tab === 'staff' ? staff === undefined : everyone.status === 'LoadingFirstPage'
+  const results = (tab === 'staff' ? staff : everyone.results) ?? []
   const setRole = useMutation(api.admin.setRole)
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -44,9 +49,7 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
   const rows = q
     ? results.filter((u) => u.name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))
     : results
-  const counts = Object.fromEntries(
-    ROLES.map((r) => [r, results.filter((u) => u.role === r).length]),
-  ) as Record<Role, number>
+  const count = (role: Role) => (staff ? staff.filter((u) => u.role === role).length : '–')
 
   return (
     <div className={styles.page}>
@@ -61,12 +64,14 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
           </button>
         )}
         <ul className={styles.stats} aria-label="Users by role">
-          {ROLES.map((r) => (
-            <li key={r}>
-              <strong>{status === 'LoadingFirstPage' ? '–' : counts[r]}</strong>
-              <span>{ROLE_LABEL[r]}s</span>
-            </li>
-          ))}
+          <li>
+            <strong>{count('admin')}</strong>
+            <span>Admins</span>
+          </li>
+          <li>
+            <strong>{count('coach')}</strong>
+            <span>Coaches</span>
+          </li>
         </ul>
       </header>
 
@@ -81,6 +86,21 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
 
       <InvitePanel open={adding} onClose={() => setAdding(false)} />
 
+      <div className={ui.tabs} role="tablist">
+        {(Object.keys(TABS) as Tab[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            className={ui.tab}
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+          >
+            {TABS[t]}
+          </button>
+        ))}
+      </div>
+
       <section className={styles.card}>
         <div className={styles.toolbar}>
           <label className={styles.search}>
@@ -94,7 +114,7 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
           </label>
         </div>
 
-        {status === 'LoadingFirstPage' ? (
+        {loading ? (
           <p className={styles.empty}>Loading users…</p>
         ) : rows.length === 0 ? (
           <p className={styles.empty}>{q ? `No users match “${search}”.` : 'No users yet.'}</p>
@@ -104,10 +124,7 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Role</th>
-                  <th>
-                    <span className="visually-hidden">Change role</span>
-                  </th>
+                  <th className={styles.actions}>Role</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,9 +144,6 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
                             <div className={styles.email}>{u.email ?? 'No email'}</div>
                           </div>
                         </div>
-                      </td>
-                      <td>
-                        <RoleBadge role={u.role} />
                       </td>
                       <td className={styles.actions}>
                         {saved === u._id && <span className={styles.saved}>Saved</span>}
@@ -158,8 +172,12 @@ export function AdminPage({ currentUserId }: { currentUserId: Id<'users'> }) {
           </div>
         )}
 
-        {status === 'CanLoadMore' && (
-          <button type="button" className={styles.more} onClick={() => loadMore(PAGE_SIZE)}>
+        {tab === 'all' && everyone.status === 'CanLoadMore' && (
+          <button
+            type="button"
+            className={styles.more}
+            onClick={() => everyone.loadMore(PAGE_SIZE)}
+          >
             Load more
           </button>
         )}
