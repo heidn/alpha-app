@@ -57,7 +57,7 @@ export function LeaderboardPage({ date }: { date?: string }) {
             >
               {classes?.map((c) => (
                 <option key={c._id} value={c._id}>
-                  {c.name} · {c.startTime}
+                  {c.name}
                 </option>
               ))}
             </select>

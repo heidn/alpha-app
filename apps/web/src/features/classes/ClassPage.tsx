@@ -6,7 +6,7 @@ import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
 import { ClassForm, type ClassValues } from './ClassForm.tsx'
-import { formatDays } from './days.ts'
+import { formatDays, formatRelease, formatTimes } from './days.ts'
 import { RosterPanel } from './RosterPanel.tsx'
 
 export function ClassPage({ id }: { id: string }) {
@@ -37,8 +37,10 @@ export function ClassPage({ id }: { id: string }) {
           </a>
           <h1>{cls.name}</h1>
           <p className={ui.sub}>
-            {formatDays(cls.daysOfWeek)} · {cls.startTime}
+            {formatDays(cls.daysOfWeek)} · {formatTimes(cls.times)}
             {cls.durationMin ? ` · ${cls.durationMin} min` : ''} · Coach {cls.coachName}
+          </p>
+          <p className={ui.sub}>Athletes see workouts: {formatRelease(cls.release)}
           </p>
         </div>
         {!editing && (

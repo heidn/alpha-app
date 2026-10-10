@@ -2,22 +2,34 @@ import { ConvexError, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { requireGymStaff } from './access'
+import { checkTimeZone, DEFAULT_TIME_ZONE } from './release'
 import { roleOf } from './roles'
 import { requireRole } from './users'
 
-const gymFields = { name: v.string(), address: v.string(), isOnline: v.boolean() }
+const gymFields = {
+  name: v.string(),
+  address: v.string(),
+  isOnline: v.boolean(),
+  timeZone: v.string(),
+}
 
 const project = (g: Doc<'gyms'>) => ({
   _id: g._id,
   name: g.name,
   address: g.address,
   isOnline: g.isOnline,
+  timeZone: g.timeZone ?? DEFAULT_TIME_ZONE,
 })
 
-function clean(args: { name: string; address: string; isOnline: boolean }) {
+function clean(args: { name: string; address: string; isOnline: boolean; timeZone: string }) {
   const name = args.name.trim()
   if (!name) throw new ConvexError('Gym name is required')
-  return { name, address: args.address.trim(), isOnline: args.isOnline }
+  return {
+    name,
+    address: args.address.trim(),
+    isOnline: args.isOnline,
+    timeZone: checkTimeZone(args.timeZone),
+  }
 }
 
 // Admin: every gym. Coach: gyms where they're staff.
@@ -68,8 +80,12 @@ export const update = mutation({
     const gym = await ctx.db.get(gymId)
     if (!gym) throw new ConvexError('Gym not found')
     const next = clean(args)
-    if (gym.name === next.name && gym.address === next.address && gym.isOnline === next.isOnline)
-      return
+    const same =
+      gym.name === next.name &&
+      gym.address === next.address &&
+      gym.isOnline === next.isOnline &&
+      gym.timeZone === next.timeZone
+    if (same) return
     await ctx.db.patch(gymId, next)
   },
 })

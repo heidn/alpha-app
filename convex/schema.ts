@@ -8,6 +8,7 @@ import {
   memberSetV,
   sourceV,
   programV,
+  releaseV,
   scoreFieldV,
   sortV,
   weightUnitV,
@@ -45,6 +46,7 @@ export default defineSchema({
     name: v.string(),
     address: v.string(),
     isOnline: v.boolean(),
+    timeZone: v.optional(v.string()), // IANA, e.g. "America/Chicago"; absent = DEFAULT_TIME_ZONE
   }).index('by_name', ['name']),
 
   gymMembers: defineTable({
@@ -65,6 +67,10 @@ export default defineSchema({
     startTime: v.string(), // "06:00", gym local time
     durationMin: v.optional(v.number()),
     daysOfWeek: v.array(v.number()), // 0 = Sun … 6 = Sat
+    // A class is a program; every time slot shares its daily workout. Sorted; startTime = times[0].
+    // Absent = [startTime].
+    times: v.optional(v.array(v.string())),
+    release: v.optional(releaseV), // absent = athletes see a workout as soon as it's saved
     capacity: v.optional(v.number()), // absent = open (no cap)
   })
     .index('by_gym', ['gymId'])

@@ -2,29 +2,37 @@ import { ConvexError, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { requireClassStaff, requireGymStaff } from './access'
+import { releaseV, type Release } from './domain'
+import { checkTime } from './release'
 import { roleOf } from './roles'
 
 const classFields = {
   coachId: v.id('users'),
   name: v.string(),
-  startTime: v.string(),
+  times: v.array(v.string()),
   durationMin: v.optional(v.number()),
   daysOfWeek: v.array(v.number()),
+  release: v.optional(releaseV),
 }
 
 type ClassFields = {
   coachId: Id<'users'>
   name: string
-  startTime: string
+  times: string[]
   durationMin?: number
   daysOfWeek: number[]
+  release?: Release
 }
+
+const timesOf = (c: Doc<'classes'>) => c.times ?? [c.startTime]
 
 async function clean(ctx: QueryCtx, gymId: Id<'gyms'>, args: ClassFields) {
   const name = args.name.trim()
   if (!name) throw new ConvexError('Class name is required')
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.startTime))
-    throw new ConvexError('Start time must be HH:MM')
+  const times = [...new Set(args.times.map((t) => checkTime(t, 'Start time')))].sort()
+  if (times.length === 0) throw new ConvexError('Add at least one start time')
+  if (times.length > 12) throw new ConvexError('Too many start times')
+  if (args.release) checkTime(args.release.time, 'Release time')
   if (args.durationMin !== undefined && !(args.durationMin > 0 && args.durationMin <= 600)) {
     throw new ConvexError('Duration must be 1–600 minutes')
   }
@@ -42,7 +50,8 @@ async function clean(ctx: QueryCtx, gymId: Id<'gyms'>, args: ClassFields) {
   if (!coach || roleOf(coach) === 'athlete' || !staffRow?.staff) {
     throw new ConvexError('Coach must be staff at this gym')
   }
-  return { ...args, name, daysOfWeek: days }
+  // startTime mirrors the first slot for readers that predate `times`.
+  return { ...args, name, times, startTime: times[0], daysOfWeek: days }
 }
 
 async function project(ctx: QueryCtx, c: Doc<'classes'>) {
@@ -54,8 +63,10 @@ async function project(ctx: QueryCtx, c: Doc<'classes'>) {
     coachName: coach?.name ?? 'Unknown',
     name: c.name,
     startTime: c.startTime,
+    times: timesOf(c),
     durationMin: c.durationMin,
     daysOfWeek: c.daysOfWeek,
+    release: c.release,
   }
 }
 
@@ -100,11 +111,19 @@ export const update = mutation({
     const same =
       cls.coachId === next.coachId &&
       cls.name === next.name &&
-      cls.startTime === next.startTime &&
+      timesOf(cls).join() === next.times.join() &&
       cls.durationMin === next.durationMin &&
-      cls.daysOfWeek.join() === next.daysOfWeek.join()
-    // Explicit key so a removed duration (undefined) clears the field.
-    if (!same) await ctx.db.patch(classId, { ...next, durationMin: next.durationMin })
+      cls.daysOfWeek.join() === next.daysOfWeek.join() &&
+      cls.release?.day === next.release?.day &&
+      cls.release?.time === next.release?.time
+    // Explicit keys so removed optional fields (undefined) clear.
+    if (!same) {
+      await ctx.db.patch(classId, {
+        ...next,
+        durationMin: next.durationMin,
+        release: next.release,
+      })
+    }
   },
 })
 

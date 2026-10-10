@@ -7,7 +7,33 @@
   border: 0;
 }
 
-.days legend {
+.times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.time {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+.time input {
+  padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.days legend,
+.times legend {
   margin-bottom: var(--s-1);
   font-size: 0.85rem;
   font-weight: 500;

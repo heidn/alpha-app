@@ -2,6 +2,7 @@ import { useQuery } from 'convex/react'
 import { useState, type FormEvent } from 'react'
 import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
+import type { Release } from '../../../../../convex/domain'
 import ui from '../ui/ui.module.css'
 import styles from './ClassForm.module.css'
 import { DAY_SHORT } from './days.ts'
@@ -9,10 +10,13 @@ import { DAY_SHORT } from './days.ts'
 export type ClassValues = {
   coachId: Id<'users'>
   name: string
-  startTime: string
+  times: string[]
   durationMin?: number
   daysOfWeek: number[]
+  release?: Release
 }
+
+type ReleaseDay = Release['day'] | 'now'
 
 type Props = {
   gymId: Id<'gyms'>
@@ -27,7 +31,9 @@ export function ClassForm({ gymId, initial, pending, submitLabel, onSubmit, onCa
   const staff = useQuery(api.gyms.staff, { gymId })
   const [name, setName] = useState(initial?.name ?? '')
   const [coachId, setCoachId] = useState<string>(initial?.coachId ?? '')
-  const [startTime, setStartTime] = useState(initial?.startTime ?? '06:00')
+  const [times, setTimes] = useState<string[]>(initial?.times ?? ['06:00'])
+  const [releaseDay, setReleaseDay] = useState<ReleaseDay>(initial?.release?.day ?? 'now')
+  const [releaseTime, setReleaseTime] = useState(initial?.release?.time ?? '20:00')
   const [duration, setDuration] = useState(initial?.durationMin?.toString() ?? '60')
   const [days, setDays] = useState<number[]>(initial?.daysOfWeek ?? [1, 2, 3, 4, 5])
 
@@ -41,9 +47,10 @@ export function ClassForm({ gymId, initial, pending, submitLabel, onSubmit, onCa
     onSubmit({
       coachId: coach._id,
       name,
-      startTime,
+      times,
       durationMin: duration ? Number(duration) : undefined,
       daysOfWeek: days,
+      release: releaseDay === 'now' ? undefined : { day: releaseDay, time: releaseTime },
     })
   }
 
@@ -54,7 +61,7 @@ export function ClassForm({ gymId, initial, pending, submitLabel, onSubmit, onCa
           Name
           <input
             required
-            placeholder="6 AM"
+            placeholder="Alpha Strength"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -71,16 +78,38 @@ export function ClassForm({ gymId, initial, pending, submitLabel, onSubmit, onCa
           </select>
         </label>
       </div>
+      <fieldset className={styles.times}>
+        <legend>Start times (all share the same workout)</legend>
+        {times.map((t, i) => (
+          <span key={i} className={styles.time}>
+            <input
+              type="time"
+              required
+              aria-label={`Start time ${i + 1}`}
+              value={t}
+              onChange={(e) => setTimes(times.map((x, j) => (j === i ? e.target.value : x)))}
+            />
+            {times.length > 1 && (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnSmall}`}
+                aria-label={`Remove start time ${i + 1}`}
+                onClick={() => setTimes(times.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+        <button
+          type="button"
+          className={`${ui.btn} ${ui.btnSmall}`}
+          onClick={() => setTimes([...times, times[times.length - 1] ?? '06:00'])}
+        >
+          + Time
+        </button>
+      </fieldset>
       <div className={ui.row}>
-        <label className={ui.field}>
-          Start time
-          <input
-            type="time"
-            required
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-          />
-        </label>
         <label className={ui.field}>
           Duration (min)
           <input
@@ -101,6 +130,30 @@ export function ClassForm({ gymId, initial, pending, submitLabel, onSubmit, onCa
           </label>
         ))}
       </fieldset>
+      <div className={ui.row}>
+        <label className={ui.field}>
+          Athletes see each workout
+          <select
+            value={releaseDay}
+            onChange={(e) => setReleaseDay(e.target.value as ReleaseDay)}
+          >
+            <option value="now">As soon as it’s saved</option>
+            <option value="before">The night before, at…</option>
+            <option value="same">The day of, at…</option>
+          </select>
+        </label>
+        {releaseDay !== 'now' && (
+          <label className={ui.field}>
+            Release time
+            <input
+              type="time"
+              required
+              value={releaseTime}
+              onChange={(e) => setReleaseTime(e.target.value)}
+            />
+          </label>
+        )}
+      </div>
       <div className={ui.formActions}>
         <button type="button" className={ui.btn} onClick={onCancel}>
           Cancel

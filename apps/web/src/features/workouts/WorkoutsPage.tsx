@@ -79,7 +79,7 @@ export function WorkoutsPage() {
             >
               {classes?.map((c) => (
                 <option key={c._id} value={c._id}>
-                  {c.name} · {c.startTime}
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -101,6 +101,7 @@ export function WorkoutsPage() {
             days={days}
             range={range}
             today={isoDate(now)}
+            now={now.getTime()}
           />
         )}
         <div className={styles.weekNav}>
@@ -130,9 +131,10 @@ type WeekProps = {
   days: Date[]
   range: { from: string; to: string }
   today: string
+  now: number
 }
 
-function Week({ classId, classDays, days, range, today }: WeekProps) {
+function Week({ classId, classDays, days, range, today, now }: WeekProps) {
   const workouts = useQuery(api.workouts.listForClassRange, { classId, ...range })
   const create = useMutation(api.workouts.create)
   const copyDay = useMutation(api.workouts.copyDay)
@@ -229,6 +231,16 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
                   ))}
                 </a>
               ) : null}
+              {workout?.releasesAt !== undefined && workout.releasesAt > now && (
+                <span className={styles.summary}>
+                  Athletes see it{' '}
+                  {new Date(workout.releasesAt).toLocaleString(undefined, {
+                    weekday: 'short',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </span>
+              )}
               {workout && date <= today && (
                 <a className={styles.results} href={hrefFor({ name: 'leaderboard', date })}>
                   Results

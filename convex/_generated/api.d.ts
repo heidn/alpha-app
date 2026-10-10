@@ -17,6 +17,7 @@ import type * as gyms from "../gyms.js";
 import type * as invites from "../invites.js";
 import type * as leaderboard from "../leaderboard.js";
 import type * as library from "../library.js";
+import type * as release from "../release.js";
 import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   invites: typeof invites;
   leaderboard: typeof leaderboard;
   library: typeof library;
+  release: typeof release;
   roles: typeof roles;
   seed: typeof seed;
   users: typeof users;

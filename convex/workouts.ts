@@ -3,6 +3,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { isGymStaff, requireClassStaff, requireWorkoutStaff } from './access'
 import { programV, type Program } from './domain'
+import { releaseAt } from './release'
 import { requireUser } from './users'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -40,6 +41,16 @@ async function loggedKeys(ctx: QueryCtx, workout: Doc<'workouts'>) {
   return keys.filter((_, i) => hits[i] !== null)
 }
 
+// Release time (epoch ms) of this class's workout on a given date; undefined = no schedule.
+async function releaseClock(ctx: QueryCtx, cls: Doc<'classes'>) {
+  const gym = cls.release ? await ctx.db.get(cls.gymId) : null
+  return (date: string) => releaseAt(date, cls.release, gym?.timeZone)
+}
+
+// Clients pass a rounded `asOf` so cached results refresh as time passes; it can't move the
+// clock past the server's, so a released-early workout can't be requested.
+const nowFor = (asOf: number | undefined) => Math.min(asOf ?? Number.POSITIVE_INFINITY, Date.now())
+
 // Staff of the class's gym, or an athlete in the class.
 async function requireWorkoutViewer(ctx: QueryCtx, workout: Doc<'workouts'>) {
   const user = await requireUser(ctx)
@@ -57,7 +68,8 @@ async function requireWorkoutViewer(ctx: QueryCtx, workout: Doc<'workouts'>) {
 export const listForClassRange = query({
   args: { classId: v.id('classes'), from: v.string(), to: v.string() },
   handler: async (ctx, { classId, from, to }) => {
-    await requireClassStaff(ctx, classId)
+    const { cls } = await requireClassStaff(ctx, classId)
+    const releasesAt = await releaseClock(ctx, cls)
     const rows = await ctx.db
       .query('workouts')
       .withIndex('by_class_date', (q) =>
@@ -80,6 +92,7 @@ export const listForClassRange = query({
       _id: w._id,
       date: w.date,
       title: w.title,
+      releasesAt: releasesAt(w.date),
       summary: w.program
         .map(sectionLine)
         .filter((line): line is string => !!line)
@@ -90,11 +103,13 @@ export const listForClassRange = query({
 })
 
 // Athlete home: the day's workout for each class they belong to. Date comes from the client.
+// A workout not yet released shows as null with its `releasesAt`.
 export const myDay = query({
-  args: { date: v.string() },
-  handler: async (ctx, { date }) => {
+  args: { date: v.string(), asOf: v.optional(v.number()) },
+  handler: async (ctx, { date, asOf }) => {
     const user = await requireUser(ctx)
     checkDate(date)
+    const now = nowFor(asOf)
     const memberships = await ctx.db
       .query('classMembers')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
@@ -108,14 +123,17 @@ export const myDay = query({
             .withIndex('by_class_date', (q) => q.eq('classId', m.classId).eq('date', date))
             .unique(),
         ])
-        return (
-          cls && {
-            classId: cls._id,
-            className: cls.name,
-            startTime: cls.startTime,
-            workout: workout && { _id: workout._id, title: workout.title },
-          }
-        )
+        if (!cls) return null
+        const releasesAt = (await releaseClock(ctx, cls))(date)
+        const released = releasesAt === undefined || releasesAt <= now
+        return {
+          classId: cls._id,
+          className: cls.name,
+          startTime: cls.startTime,
+          times: cls.times ?? [cls.startTime],
+          releasesAt,
+          workout: workout && released ? { _id: workout._id, title: workout.title } : null,
+        }
       }),
     )
     return rows.filter((r) => r !== null).sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -123,12 +141,16 @@ export const myDay = query({
 })
 
 export const get = query({
-  args: { workoutId: v.string() },
+  args: { workoutId: v.string(), asOf: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const workoutId = ctx.db.normalizeId('workouts', args.workoutId)
     const workout = workoutId && (await ctx.db.get(workoutId))
     if (!workout) return null
     const { cls, canEdit } = await requireWorkoutViewer(ctx, workout)
+    if (!canEdit) {
+      const releasesAt = (await releaseClock(ctx, cls))(workout.date)
+      if (releasesAt !== undefined && releasesAt > nowFor(args.asOf)) return null
+    }
     const sectionIds = [...new Set(workout.program.map((s) => s.sectionId))]
     const exerciseIds = [
       ...new Set(workout.program.flatMap((s) => s.exercises.map((e) => e.exerciseId))),
