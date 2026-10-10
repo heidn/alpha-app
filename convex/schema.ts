@@ -166,6 +166,7 @@ export default defineSchema({
     workoutId: v.id('workouts'),
     itemKey: v.string(), // program section/exercise key
     exerciseId: v.optional(v.id('exercises')), // copied for history; absent = section score
+    variant: v.optional(v.string()), // copied for history: "2,000 m", "20 min", "3RM" (convex/variants.ts)
     scoreTypeId: v.id('scoreTypes'),
     loggedAt: v.number(),
     unit: v.optional(v.union(weightUnitV, distanceUnitV)),
