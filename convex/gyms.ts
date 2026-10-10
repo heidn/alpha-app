@@ -1,4 +1,3 @@
-import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { mutation, query, type QueryCtx } from './_generated/server'
@@ -90,25 +89,6 @@ export const staff = query({
       .take(100)
     const users = await Promise.all(rows.map((r) => userSummary(ctx, r.userId)))
     return users.filter((u) => u !== null).sort((a, b) => a.name.localeCompare(b.name))
-  },
-})
-
-export const members = query({
-  args: { gymId: v.id('gyms'), paginationOpts: paginationOptsValidator },
-  handler: async (ctx, { gymId, paginationOpts }) => {
-    await requireGymStaff(ctx, gymId)
-    const page = await ctx.db
-      .query('gymMembers')
-      .withIndex('by_gym_user', (q) => q.eq('gymId', gymId))
-      .paginate(paginationOpts)
-    const users = await Promise.all(page.page.map((r) => userSummary(ctx, r.userId)))
-    return {
-      ...page,
-      page: page.page.flatMap((r, i) => {
-        const u = users[i]
-        return u ? [{ ...u, staff: r.staff === true }] : []
-      }),
-    }
   },
 })
 

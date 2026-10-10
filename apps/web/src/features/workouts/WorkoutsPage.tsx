@@ -47,7 +47,7 @@ export function WorkoutsPage() {
     <div className={ui.page}>
       <header className={ui.header}>
         <div>
-          <h1>Workouts</h1>
+          <h1>Program</h1>
           <p className={ui.sub}>
             Program each class day. Athletes in the class see it automatically.
           </p>
@@ -229,6 +229,11 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
                   ))}
                 </a>
               ) : null}
+              {workout && date <= today && (
+                <a className={styles.results} href={hrefFor({ name: 'leaderboard', date })}>
+                  Results
+                </a>
+              )}
               {workout && copying?.id !== workout._id && (
                 <button
                   type="button"

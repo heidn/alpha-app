@@ -82,3 +82,7 @@
 .copyTo input {
   padding: var(--s-1) var(--s-2);
 }
+
+.results {
+  font-size: 0.8rem;
+}
