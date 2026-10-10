@@ -3,7 +3,8 @@ import { mutation, query } from './_generated/server'
 import { scoreFieldV, sortV } from './domain'
 import { requireRole, requireUser } from './users'
 
-// Shared library: any staff can add; only admins edit. No deletes: workouts reference these by id.
+// Shared library: any staff can add; only admins edit. Exercises are removed only by merging
+// into another (workouts and logs reference them by id).
 
 const required = (value: string, label: string) => {
   const s = value.trim()
@@ -87,6 +88,48 @@ export const updateExercise = mutation({
     if (e.name !== next.name || e.description !== next.description) {
       await ctx.db.patch(exerciseId, next)
     }
+  },
+})
+
+const MERGE_BATCH = 200
+
+// Admin cleanup: point every workout and log at `intoId`, then delete `fromId`. Workouts and logs
+// have no index by exercise, so this walks them in batches: call again with the returned
+// phase/cursor until done. Each batch leaves every reference valid.
+export const mergeExercise = mutation({
+  args: {
+    fromId: v.id('exercises'),
+    intoId: v.id('exercises'),
+    phase: v.union(v.literal('workouts'), v.literal('logs')),
+    cursor: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, { fromId, intoId, phase, cursor }) => {
+    await requireRole(ctx, 'admin')
+    if (fromId === intoId) throw new ConvexError('Pick a different exercise')
+    const [from, into] = await Promise.all([ctx.db.get(fromId), ctx.db.get(intoId)])
+    if (!from || !into) throw new ConvexError('Exercise not found')
+
+    if (phase === 'workouts') {
+      const page = await ctx.db.query('workouts').paginate({ cursor, numItems: MERGE_BATCH })
+      for (const w of page.page) {
+        if (!w.program.some((s) => s.exercises.some((e) => e.exerciseId === fromId))) continue
+        const swap = <E extends { exerciseId: typeof fromId }>(e: E) =>
+          e.exerciseId === fromId ? { ...e, exerciseId: intoId } : e
+        const program = w.program.map((s) => ({ ...s, exercises: s.exercises.map(swap) }))
+        await ctx.db.patch(w._id, { program })
+      }
+      return page.isDone
+        ? { done: false, phase: 'logs' as const, cursor: null }
+        : { done: false, phase, cursor: page.continueCursor }
+    }
+
+    const page = await ctx.db.query('memberLogs').paginate({ cursor, numItems: MERGE_BATCH })
+    for (const l of page.page) {
+      if (l.exerciseId === fromId) await ctx.db.patch(l._id, { exerciseId: intoId })
+    }
+    if (!page.isDone) return { done: false, phase, cursor: page.continueCursor }
+    await ctx.db.delete(fromId)
+    return { done: true, phase, cursor: null }
   },
 })
 
