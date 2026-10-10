@@ -41,7 +41,7 @@ export function MergeExercise({ from, onDone }: { from: Exercise; onDone: () => 
       for (let i = 0; i < 500; i++) {
         const next = await merge({ fromId: from._id, intoId: target._id, fixed, ...step })
         if (next.done) return
-        step = next
+        step = { phase: next.phase, cursor: next.cursor }
       }
       throw new ConvexError('Still merging: press Merge again')
     })
