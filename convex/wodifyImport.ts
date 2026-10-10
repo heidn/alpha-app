@@ -22,6 +22,7 @@ import {
   WARMUP_KEY,
   type ScoreTypeName,
 } from './wodify'
+import { linkParts } from './complexes'
 import { movementTest, toPrescription, variantOf, type Fixed } from './variants'
 
 // Wodify performance results -> users, workouts, memberLogs, bookings (attendance). Admin-only.
@@ -86,7 +87,8 @@ export const prepare = mutation({
     }
     for (const raw of new Set(exercises)) {
       const name = raw.trim().slice(0, 120)
-      if (name && !(await exerciseByName(ctx, name))) await ctx.db.insert('exercises', { name })
+      if (name && !(await exerciseByName(ctx, name)))
+        await linkParts(ctx, await ctx.db.insert('exercises', { name }))
     }
     for (const name of new Set(scoreTypes)) {
       if (!isScoreTypeName(name)) throw new ConvexError(`Unknown score type "${name}"`)

@@ -61,6 +61,14 @@ export function HistoryPage({ userId, exerciseId }: { userId: string; exerciseId
     }),
   )
   pacePoints.sort((a, b) => a.x - b.x)
+  // A complex lifted heavier than any straight attempt sets a floor for this lift.
+  const ownBest = Math.max(
+    0,
+    ...data.variants.flatMap((v) =>
+      v.entries.flatMap((e) => (e.sets.some((x) => x.weight) ? [e.sortValue ?? 0] : [])),
+    ),
+  )
+  const heaviestInComplex = data.complexes.find((c) => c.bestWeight > ownBest)
   const paceVariants = new Set(
     data.variants.filter((v) => v.entries.some((e) => paceOf(v.variant, e.sets, e.unit, per))),
   )
@@ -78,8 +86,29 @@ export function HistoryPage({ userId, exerciseId }: { userId: string; exerciseId
             {data.variants.length === 1 ? 'variation' : 'variations'}
             {data.truncated ? ' (latest 500 results)' : ''}
           </p>
+          {data.parts.length > 0 && (
+            <p className={ui.sub}>
+              Complex of{' '}
+              {data.parts.map((p, i) => (
+                <span key={`${p.exerciseId}-${i}`}>
+                  {i > 0 && ' + '}
+                  <a href={hrefFor({ name: 'history', userId, exerciseId: p.exerciseId })}>
+                    {p.name}
+                  </a>
+                </span>
+              ))}
+            </p>
+          )}
         </div>
       </header>
+
+      {heaviestInComplex && (
+        <p className={styles.callout}>
+          Heaviest {data.exercise.name} including complexes:{' '}
+          <strong>{formatScore(heaviestInComplex.best.sets, heaviestInComplex.best.unit)}</strong>{' '}
+          in {heaviestInComplex.name} ({day(heaviestInComplex.best.loggedAt)})
+        </p>
+      )}
 
       {data.variants.length === 0 && (
         <section className={ui.card}>
@@ -113,6 +142,43 @@ export function HistoryPage({ userId, exerciseId }: { userId: string; exerciseId
           />
         ))}
       </div>
+
+      {data.complexes.length > 0 && (
+        <section className={ui.card}>
+          <div className={ui.cardHead}>
+            <h2>In complexes</h2>
+            <span className={ui.muted}>Best weight in each</span>
+          </div>
+          <div className={ui.tableWrap}>
+            <table className={ui.table}>
+              <thead>
+                <tr>
+                  <th>Complex</th>
+                  <th>Best</th>
+                  <th>Date</th>
+                  <th>Results</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.complexes.map((c) => (
+                  <tr key={c.exerciseId}>
+                    <td>
+                      <a href={hrefFor({ name: 'history', userId, exerciseId: c.exerciseId })}>
+                        {c.name}
+                      </a>
+                    </td>
+                    <td>
+                      <span className={styles.score}>{formatScore(c.best.sets, c.best.unit)}</span>
+                    </td>
+                    <td>{day(c.best.loggedAt)}</td>
+                    <td>{c.results}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

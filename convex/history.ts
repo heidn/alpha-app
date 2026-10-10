@@ -5,6 +5,8 @@ import { isGymStaff } from './access'
 import { requireUser } from './users'
 
 const MAX_LOGS = 500
+const MAX_EXERCISES = 1000
+const MAX_COMPLEX_LOGS = 200
 
 // Your own history, or an athlete's at a gym where you're staff (admins: anyone).
 async function requireHistoryAccess(ctx: QueryCtx, userId: Id<'users'>) {
@@ -66,9 +68,44 @@ export const exercise = query({
       })
       .sort((a, b) => b.entries.length - a.entries.length)
 
+    // Complexes containing this lift ("Clean" → "Clean Pull + Clean"), with the athlete's best in
+    // each: lifting X inside a complex means at least X for this lift too.
+    const library = await ctx.db.query('exercises').take(MAX_EXERCISES)
+    const byId = new Map(library.map((e) => [e._id, e.name]))
+    const containing = library.filter((e) => e.parts?.includes(exerciseId))
+    const complexes = (
+      await Promise.all(
+        containing.map(async (c) => {
+          const rows = await ctx.db
+            .query('memberLogs')
+            .withIndex('by_user_exercise', (q) => q.eq('userId', userId).eq('exerciseId', c._id))
+            .take(MAX_COMPLEX_LOGS)
+          const weighed = rows.filter((l) => l.isScored && l.sets.some((s) => s.weight))
+          if (!weighed.length) return []
+          const best = weighed.reduce((b, l) => ((l.sortValue ?? 0) > (b.sortValue ?? 0) ? l : b))
+          return [
+            {
+              exerciseId: c._id,
+              name: c.name,
+              results: weighed.length,
+              best: { sets: best.sets, unit: best.unit, loggedAt: best.loggedAt },
+              bestWeight: best.sortValue ?? 0,
+            },
+          ]
+        }),
+      )
+    )
+      .flat()
+      .sort((a, b) => b.bestWeight - a.bestWeight)
+
     return {
       athlete: { name: athlete.name },
       exercise: { name: exercise.name },
+      parts: (exercise.parts ?? []).map((id) => ({
+        exerciseId: id,
+        name: byId.get(id) ?? 'Exercise',
+      })),
+      complexes,
       truncated: logs.length === MAX_LOGS,
       variants,
     }

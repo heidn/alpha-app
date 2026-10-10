@@ -1,9 +1,10 @@
-import { ConvexError, v } from 'convex/values'
-import { mutation, query } from './_generated/server'
+import { ConvexError, v, type Infer } from 'convex/values'
+import { internalMutation, mutation, query, type MutationCtx } from './_generated/server'
 import { distanceUnitV, scoreFieldV, sortV, type ProgramSection } from './domain'
 import { requireRole, requireUser } from './users'
 import { fixedLabel, movementTest, toPrescription, variantOf, type Fixed } from './variants'
 import { movementId, testSection } from './wodifyImport'
+import { linkParts } from './complexes'
 
 // Shared library: any staff can add; only admins edit. Exercises are removed only by merging
 // into another (workouts and logs reference them by id).
@@ -76,7 +77,9 @@ export const createExercise = mutation({
       .withIndex('by_name', (q) => q.eq('name', name))
       .first()
     if (dupe) return dupe._id
-    return await ctx.db.insert('exercises', { name, description: optional(args.description) })
+    const id = await ctx.db.insert('exercises', { name, description: optional(args.description) })
+    await linkParts(ctx, id)
+    return id
   },
 })
 
@@ -90,55 +93,68 @@ export const updateExercise = mutation({
     if (e.name !== next.name || e.description !== next.description) {
       await ctx.db.patch(exerciseId, next)
     }
+    if (e.name !== next.name) await linkParts(ctx, exerciseId)
   },
 })
 
 const MERGE_BATCH = 200
+const TEMPLATE_LIMIT = 500
+const USE_SCAN_LIMIT = 8000
 
-// Admin cleanup: point every workout and log at `intoId`, then delete `fromId`. Workouts and logs
-// have no index by exercise, so this walks them in batches: call again with the returned
-// phase/cursor until done. Each batch leaves every reference valid.
+// Admin cleanup: point every workout, template, log and recorded 1RM at `intoId`, then delete
+// `fromId`. Workouts, logs and users have no index by exercise, so this walks them in batches:
+// call again with the returned phase/cursor until done. Each batch leaves every reference valid.
 // "1000m row" → Row keeps its distance as the variant on every workout and result.
 const fixedV = v.object({
   amount: v.number(),
   unit: v.union(distanceUnitV, v.literal('min'), v.literal('cal'), v.literal('reps')),
 })
+const mergeArgs = {
+  fromId: v.id('exercises'),
+  intoId: v.id('exercises'),
+  phase: v.union(v.literal('workouts'), v.literal('logs'), v.literal('users')),
+  cursor: v.union(v.string(), v.null()),
+  fixed: v.optional(fixedV),
+}
+const mergeArgsV = v.object(mergeArgs)
+type MergeArgs = Infer<typeof mergeArgsV>
+type Step = { done: boolean; phase: MergeArgs['phase']; cursor: string | null }
 
-export const mergeExercise = mutation({
-  args: {
-    fromId: v.id('exercises'),
-    intoId: v.id('exercises'),
-    phase: v.union(v.literal('workouts'), v.literal('logs')),
-    cursor: v.union(v.string(), v.null()),
-    fixed: v.optional(fixedV),
-  },
-  handler: async (ctx, { fromId, intoId, phase, cursor, fixed }) => {
-    if (fixed && !(fixed.amount > 0)) throw new ConvexError('Amount must be more than zero')
-    await requireRole(ctx, 'admin')
-    if (fromId === intoId) throw new ConvexError('Pick a different exercise')
-    const [from, into] = await Promise.all([ctx.db.get(fromId), ctx.db.get(intoId)])
-    if (!from || !into) throw new ConvexError('Exercise not found')
+async function mergeStep(ctx: MutationCtx, a: MergeArgs): Promise<Step> {
+  const { fromId, intoId, phase, cursor, fixed } = a
+  if (fixed && !(fixed.amount > 0)) throw new ConvexError('Amount must be more than zero')
+  if (fromId === intoId) throw new ConvexError('Pick a different exercise')
+  const [from, into] = await Promise.all([ctx.db.get(fromId), ctx.db.get(intoId)])
+  if (!from || !into) throw new ConvexError('Exercise not found')
+  const swap = <E extends ProgramSection['exercises'][number]>(e: E) =>
+    e.exerciseId !== fromId
+      ? e
+      : {
+          ...e,
+          exerciseId: intoId,
+          prescriptions: fixed ? withFixed(e.prescriptions, fixed) : e.prescriptions,
+        }
+  const uses = (s: ProgramSection) => s.exercises.some((e) => e.exerciseId === fromId)
+  const next = (p: Step['phase']): Step => ({ done: false, phase: p, cursor: null })
 
-    if (phase === 'workouts') {
-      const page = await ctx.db.query('workouts').paginate({ cursor, numItems: MERGE_BATCH })
-      for (const w of page.page) {
-        if (!w.program.some((s) => s.exercises.some((e) => e.exerciseId === fromId))) continue
-        const swap = <E extends ProgramSection['exercises'][number]>(e: E) =>
-          e.exerciseId !== fromId
-            ? e
-            : {
-                ...e,
-                exerciseId: intoId,
-                prescriptions: fixed ? withFixed(e.prescriptions, fixed) : e.prescriptions,
-              }
-        const program = w.program.map((s) => ({ ...s, exercises: s.exercises.map(swap) }))
-        await ctx.db.patch(w._id, { program })
-      }
-      return page.isDone
-        ? { done: false, phase: 'logs' as const, cursor: null }
-        : { done: false, phase, cursor: page.continueCursor }
+  if (phase === 'workouts') {
+    const page = await ctx.db.query('workouts').paginate({ cursor, numItems: MERGE_BATCH })
+    for (const w of page.page) {
+      if (!w.program.some(uses)) continue
+      const program = w.program.map((s) => ({ ...s, exercises: s.exercises.map(swap) }))
+      await ctx.db.patch(w._id, { program })
     }
+    if (!page.isDone) return { done: false, phase, cursor: page.continueCursor }
+    for (const t of await ctx.db.query('sectionTemplates').take(TEMPLATE_LIMIT)) {
+      if (uses(t.section))
+        await ctx.db.patch(t._id, {
+          section: { ...t.section, exercises: t.section.exercises.map(swap) },
+        })
+    }
+    return next('logs')
+  }
 
+  if (phase === 'logs') {
     const page = await ctx.db.query('memberLogs').paginate({ cursor, numItems: MERGE_BATCH })
     for (const l of page.page) {
       if (l.exerciseId === fromId)
@@ -147,9 +163,61 @@ export const mergeExercise = mutation({
           ...(fixed ? { variant: fixedLabel(fixed) } : {}),
         })
     }
-    if (!page.isDone) return { done: false, phase, cursor: page.continueCursor }
-    await ctx.db.delete(fromId)
-    return { done: true, phase, cursor: null }
+    return page.isDone ? next('users') : { done: false, phase, cursor: page.continueCursor }
+  }
+
+  // Recorded 1RMs: one per exercise, so keep the heavier when the athlete has both.
+  const page = await ctx.db.query('users').paginate({ cursor, numItems: MERGE_BATCH })
+  for (const u of page.page) {
+    const old = u.maxes?.find((m) => m.exerciseId === fromId)
+    if (!old || !u.maxes) continue
+    const kept = u.maxes.find((m) => m.exerciseId === intoId)
+    const rest = u.maxes.filter((m) => m.exerciseId !== fromId && m.exerciseId !== intoId)
+    const best = kept && kept.weight >= old.weight ? kept : { ...old, exerciseId: intoId }
+    await ctx.db.patch(u._id, { maxes: [...rest, best] })
+  }
+  if (!page.isDone) return { done: false, phase, cursor: page.continueCursor }
+  await ctx.db.delete(fromId)
+  return { done: true, phase, cursor: null }
+}
+
+export const mergeExercise = mutation({
+  args: mergeArgs,
+  handler: async (ctx, args) => {
+    await requireRole(ctx, 'admin')
+    return await mergeStep(ctx, args)
+  },
+})
+
+// Same as mergeExercise, for one-off cleanups from the CLI (`npx convex run`).
+export const mergeExerciseInternal = internalMutation({
+  args: mergeArgs,
+  handler: async (ctx, args) => await mergeStep(ctx, args),
+})
+
+// CLI cleanup: delete exercises nothing points at (junk names). Logs only get an exerciseId copied
+// from a workout item, so an exercise no workout, template or 1RM uses has no results either.
+export const deleteUnusedExercises = internalMutation({
+  args: { exerciseIds: v.array(v.id('exercises')) },
+  handler: async (ctx, { exerciseIds }) => {
+    const ids = new Set<string>(exerciseIds)
+    const used = new Set<string>()
+    const workouts = await ctx.db.query('workouts').take(USE_SCAN_LIMIT)
+    const templates = await ctx.db.query('sectionTemplates').take(TEMPLATE_LIMIT)
+    const users = await ctx.db.query('users').take(USE_SCAN_LIMIT)
+    if (workouts.length === USE_SCAN_LIMIT || users.length === USE_SCAN_LIMIT)
+      throw new ConvexError('Too much data to check in one go')
+    for (const s of [...workouts.flatMap((w) => w.program), ...templates.map((t) => t.section)])
+      for (const e of s.exercises) if (ids.has(e.exerciseId)) used.add(e.exerciseId)
+    for (const u of users) for (const m of u.maxes ?? []) if (ids.has(m.exerciseId)) used.add(m.exerciseId)
+    const deleted: string[] = []
+    for (const id of exerciseIds) {
+      const e = await ctx.db.get(id)
+      if (!e || used.has(id)) continue
+      await ctx.db.delete(id)
+      deleted.push(e.name)
+    }
+    return { deleted, kept: [...used] }
   },
 })
 

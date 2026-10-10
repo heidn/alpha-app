@@ -12,6 +12,7 @@ import type * as access from "../access.js";
 import type * as admin from "../admin.js";
 import type * as classMembers from "../classMembers.js";
 import type * as classes from "../classes.js";
+import type * as complexes from "../complexes.js";
 import type * as domain from "../domain.js";
 import type * as gyms from "../gyms.js";
 import type * as history from "../history.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   classMembers: typeof classMembers;
   classes: typeof classes;
+  complexes: typeof complexes;
   domain: typeof domain;
   gyms: typeof gyms;
   history: typeof history;

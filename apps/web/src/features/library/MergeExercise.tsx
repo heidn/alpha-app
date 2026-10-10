@@ -12,11 +12,12 @@ import { FIXED_UNITS } from '../workouts/testOption.ts'
 import styles from './MergeExercise.module.css'
 
 type Exercise = { _id: Id<'exercises'>; name: string }
-type Phase = 'workouts' | 'logs'
+type Phase = 'workouts' | 'logs' | 'users'
 
 const PHASE_LABEL: Record<Phase, string> = {
   workouts: 'Updating workouts…',
   logs: 'Updating results…',
+  users: 'Updating recorded 1RMs…',
 }
 
 // Replace a junk or duplicate exercise with another everywhere, then delete it.
