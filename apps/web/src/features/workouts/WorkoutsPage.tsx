@@ -10,10 +10,35 @@ import { useRun } from '../ui/useRun.ts'
 import { addDays, isoDate, weekDays } from './program.ts'
 import styles from './WorkoutsPage.module.css'
 
+// Week being viewed (its Monday), kept for the tab so returning from the editor doesn't reset it.
+const WEEK_KEY = 'workouts.week'
+const readWeek = () => {
+  try {
+    return sessionStorage.getItem(WEEK_KEY)
+  } catch {
+    return null
+  }
+}
+
 export function WorkoutsPage() {
   const { gyms, gym, classes, cls, loading, pickGym, pickClass } = useClassPick()
-  const [offset, setOffset] = useState(0)
   const [now] = useState(() => new Date())
+  const [weekStart, setWeekStart] = useState(() => {
+    const saved = readWeek()
+    return saved ? new Date(`${saved}T00:00:00`) : weekDays(now, 0)[0]
+  })
+  const thisMonday = weekDays(now, 0)[0]
+  // Rounded: a DST change makes the gap between Mondays an hour off.
+  const offset = Math.round((weekStart.getTime() - thisMonday.getTime()) / (7 * 86_400_000))
+  const setOffset = (next: (o: number) => number) => {
+    const start = weekDays(now, next(offset))[0]
+    setWeekStart(start)
+    try {
+      sessionStorage.setItem(WEEK_KEY, isoDate(start))
+    } catch {
+      // Storage unavailable: the week just won't survive navigation.
+    }
+  }
 
   const days = weekDays(now, offset)
   const range = { from: isoDate(days[0]), to: isoDate(days[6]) }
@@ -85,7 +110,7 @@ export function WorkoutsPage() {
           <button
             type="button"
             className={ui.btn}
-            onClick={() => setOffset(0)}
+            onClick={() => setOffset(() => 0)}
             disabled={offset === 0}
           >
             This week
