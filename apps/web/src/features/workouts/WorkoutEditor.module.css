@@ -54,6 +54,33 @@
   width: 6rem;
 }
 
+.options {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.option > span:first-child {
+  min-width: 3.5rem;
+}
+
+.option input {
+  width: 6rem;
+}
+
+.option select {
+  width: auto;
+}
+
 .exercises {
   display: grid;
   gap: var(--s-3);

@@ -5,6 +5,8 @@ import { MetconFormat } from './MetconFormat.tsx'
 import { PrescriptionTable } from './PrescriptionTable.tsx'
 import { emptyPrescription, move, newKey, removeAt, replaceAt, scoreTypeFor } from './program.ts'
 import { ScoreControl, type ScoreTypeOption } from './ScoreControl.tsx'
+import { TestOptions } from './TestOptions.tsx'
+import { fixedOf, optionScore } from './testOption.ts'
 import styles from './WorkoutEditor.module.css'
 
 type Props = {
@@ -29,11 +31,24 @@ const exerciseScoreType = (s: ProgramSection, e: ProgramSection['exercises'][num
     ? 'For Time'
     : 'Weight per set'
 
+// Standard ⇄ pick-one test. A test scores each option, never the section.
+function withKind(s: ProgramSection, test: boolean, p: Props): ProgramSection {
+  if (!test) return { ...s, kind: undefined }
+  const exercises = s.exercises.map((e) => ({
+    ...e,
+    score: p.logged.has(e.key)
+      ? e.score
+      : optionScore(p.scoreTypes, fixedOf(e.prescriptions[0]), p.names[e.exerciseId] ?? '', e.score),
+  }))
+  return { ...s, kind: 'test', score: undefined, format: undefined, timeCapSec: undefined, exercises }
+}
+
 const hasLogs = (s: ProgramSection, logged: Set<string>) =>
   logged.has(s.key) || s.exercises.some((e) => logged.has(e.key))
 
 export function SectionCard(p: Props) {
   const { section: s, logged } = p
+  const isTest = s.kind === 'test'
   const scored = !!s.score || s.exercises.some((e) => e.score)
   const setExercises = (exercises: ProgramSection['exercises']) => p.onChange({ ...s, exercises })
   const lockedTitle = 'Members have logged results here'
@@ -42,7 +57,22 @@ export function SectionCard(p: Props) {
     <article className={styles.section} data-scored={scored || undefined}>
       <header className={styles.sectionHead}>
         <h3>{p.title}</h3>
-        {scored ? (
+        <label>
+          <span className="visually-hidden">Section type</span>
+          <select
+            className={ui.input}
+            value={isTest ? 'test' : ''}
+            disabled={logged.has(s.key)}
+            title={logged.has(s.key) ? lockedTitle : undefined}
+            onChange={(e) => p.onChange(withKind(s, e.target.value === 'test', p))}
+          >
+            <option value="">Standard</option>
+            <option value="test">Pick-one test</option>
+          </select>
+        </label>
+        {isTest ? (
+          <span className={`${ui.pill} ${styles.scoredPill}`}>Each option scored</span>
+        ) : scored ? (
           <span className={`${ui.pill} ${styles.scoredPill}`}>Scored</span>
         ) : (
           <span className={ui.pill}>Display only</span>
@@ -99,6 +129,18 @@ export function SectionCard(p: Props) {
         />
       </label>
 
+      {isTest ? (
+        <TestOptions
+          section={s}
+          names={p.names}
+          scoreTypes={p.scoreTypes}
+          logged={logged}
+          onChange={p.onChange}
+          onName={p.onName}
+          onError={p.onError}
+        />
+      ) : (
+        <>
       <ScoreControl
         score={s.score}
         scoreTypes={p.scoreTypes}
@@ -186,6 +228,8 @@ export function SectionCard(p: Props) {
           ])
         }}
       />
+        </>
+      )}
     </article>
   )
 }
