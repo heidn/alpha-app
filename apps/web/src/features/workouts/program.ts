@@ -21,6 +21,12 @@ export const emptyPrescription = (): Prescription => ({ sets: 1 })
 export const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
+export function addDays(d: Date, days: number): Date {
+  const next = new Date(d)
+  next.setDate(d.getDate() + days)
+  return next
+}
+
 // Monday-start week containing `base` + offset weeks.
 export function weekDays(base: Date, offset: number): Date[] {
   const monday = new Date(base.getFullYear(), base.getMonth(), base.getDate())

@@ -171,6 +171,68 @@ export const create = mutation({
   },
 })
 
+const addDays = (date: string, days: number) => {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+// A coach-owned copy: keeps item keys (logs are per workout), drops the import source.
+const copyOf = (w: Doc<'workouts'>, date: string) => ({
+  classId: w.classId,
+  date,
+  title: w.title,
+  description: w.description,
+  durationMin: w.durationMin,
+  program: w.program,
+})
+
+async function workoutOn(ctx: QueryCtx, classId: Id<'classes'>, date: string) {
+  return await ctx.db
+    .query('workouts')
+    .withIndex('by_class_date', (q) => q.eq('classId', classId).eq('date', date))
+    .first()
+}
+
+export const copyDay = mutation({
+  args: { workoutId: v.id('workouts'), toDate: v.string() },
+  handler: async (ctx, args) => {
+    const { workout } = await requireWorkoutStaff(ctx, args.workoutId)
+    const toDate = checkDate(args.toDate)
+    if (await workoutOn(ctx, workout.classId, toDate)) {
+      throw new ConvexError('This class already has a workout that day')
+    }
+    return await ctx.db.insert('workouts', copyOf(workout, toDate))
+  },
+})
+
+// Copies each day of the week starting `fromDate` onto the same weekday of the week starting
+// `toDate`. Days that already have a workout are left alone.
+export const copyWeek = mutation({
+  args: { classId: v.id('classes'), fromDate: v.string(), toDate: v.string() },
+  handler: async (ctx, args) => {
+    await requireClassStaff(ctx, args.classId)
+    const fromDate = checkDate(args.fromDate)
+    const toDate = checkDate(args.toDate)
+    if (fromDate === toDate) throw new ConvexError('Pick a different week')
+    const source = await ctx.db
+      .query('workouts')
+      .withIndex('by_class_date', (q) =>
+        q.eq('classId', args.classId).gte('date', fromDate).lte('date', addDays(fromDate, 6)),
+      )
+      .take(7)
+    let copied = 0
+    for (const w of source) {
+      const offset = (Date.parse(w.date) - Date.parse(fromDate)) / 86_400_000
+      const date = addDays(toDate, offset)
+      if (await workoutOn(ctx, args.classId, date)) continue
+      await ctx.db.insert('workouts', copyOf(w, date))
+      copied++
+    }
+    return { copied, skipped: source.length - copied }
+  },
+})
+
 // Key-sorted JSON so stored vs incoming objects compare regardless of field order.
 const stable = (value: unknown): string =>
   JSON.stringify(value, (_, v: unknown) =>
