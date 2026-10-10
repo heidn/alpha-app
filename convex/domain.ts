@@ -53,6 +53,9 @@ export const prescriptionV = v.object({
   percentageMax: v.optional(v.number()), // range: 75-80% = percentage 75, percentageMax 80
   rpe: v.optional(v.number()),
   rpeMax: v.optional(v.number()),
+  // Fixed amount of a test option: "20 min row" (durationSec), "50 cal bike" (calories).
+  durationSec: v.optional(v.number()),
+  calories: v.optional(v.number()),
   customText: v.optional(v.string()),
 })
 
@@ -72,9 +75,19 @@ export const metconFormatV = v.union(
   v.literal('intervals'),
 )
 
+// absent = generic section (legacy). test = athletes do one option; each option is scored
+// on its own (2k row OR 1 mi run), so each movement + variant keeps its own board and history.
+export const sectionKindV = v.union(
+  v.literal('strength'),
+  v.literal('metcon'),
+  v.literal('test'),
+  v.literal('notes'),
+)
+
 export const programSectionV = v.object({
   key: v.string(),
   sectionId: v.id('sections'),
+  kind: v.optional(sectionKindV),
   notes: v.optional(v.string()),
   score: v.optional(scoreV),
   format: v.optional(metconFormatV),
@@ -99,6 +112,7 @@ export const memberSetV = v.object({
 export const sourceV = v.literal('wodify')
 
 export type MetconFormat = Infer<typeof metconFormatV>
+export type SectionKind = Infer<typeof sectionKindV>
 export type MemberSet = Infer<typeof memberSetV>
 export type ScoreField = Infer<typeof scoreFieldV>
 export type Prescription = Infer<typeof prescriptionV>

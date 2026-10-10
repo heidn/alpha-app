@@ -273,6 +273,8 @@ async function validateProgram(ctx: QueryCtx, workout: Doc<'workouts'>, program:
   const nonNegative = (n: number | undefined) => n === undefined || (Number.isFinite(n) && n >= 0)
   for (const s of program) {
     claimKey(s.key)
+    if (s.kind === 'test' && (s.score || s.exercises.some((e) => !e.score)))
+      throw new ConvexError('Each option of a test is scored on its own')
     if (s.exercises.length > LIMITS.exercises)
       throw new ConvexError('Too many exercises in a section')
     for (const e of s.exercises) {
@@ -289,6 +291,8 @@ async function validateProgram(ctx: QueryCtx, workout: Doc<'workouts'>, program:
           p.femaleDistance,
           p.percentage,
           p.rpe,
+          p.durationSec,
+          p.calories,
         ]
         if (!nums.every(nonNegative)) throw new ConvexError('Numbers must be zero or more')
       }
