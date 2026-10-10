@@ -34,7 +34,11 @@ export function SectionCard(p: Props) {
     <article className={styles.section} data-scored={scored || undefined}>
       <header className={styles.sectionHead}>
         <h3>{p.title}</h3>
-        {!scored && <span className={ui.pill}>Display only</span>}
+        {scored ? (
+          <span className={`${ui.pill} ${styles.scoredPill}`}>Scored</span>
+        ) : (
+          <span className={ui.pill}>Display only</span>
+        )}
         <div className={styles.tools}>
           <button
             type="button"
@@ -59,7 +63,10 @@ export function SectionCard(p: Props) {
             className={`${ui.btnDanger} ${ui.btnSmall}`}
             disabled={hasLogs(s, logged)}
             title={hasLogs(s, logged) ? lockedTitle : undefined}
-            onClick={p.onRemove}
+            onClick={() => {
+              const empty = !s.notes && s.exercises.length === 0 && !s.score
+              if (empty || window.confirm(`Remove ${p.title}?`)) p.onRemove()
+            }}
           >
             Remove
           </button>
@@ -116,7 +123,9 @@ export function SectionCard(p: Props) {
                     aria-label={`Remove ${name}`}
                     disabled={logged.has(e.key)}
                     title={logged.has(e.key) ? lockedTitle : undefined}
-                    onClick={() => setExercises(removeAt(s.exercises, i))}
+                    onClick={() => {
+                      if (window.confirm(`Remove ${name}?`)) setExercises(removeAt(s.exercises, i))
+                    }}
                   >
                     ×
                   </button>

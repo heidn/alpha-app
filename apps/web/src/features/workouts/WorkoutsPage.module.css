@@ -1,10 +1,16 @@
 .week {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: var(--s-2);
   margin: 0;
   padding: var(--s-4);
   list-style: none;
+}
+
+@media (max-width: 760px) {
+  .week {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
 }
 
 .day {
@@ -33,13 +39,20 @@
 }
 
 .workout {
-  font-weight: 600;
+  display: grid;
+  gap: 2px;
   color: var(--text);
   text-decoration: none;
 }
 
-.workout:hover {
+.workout:hover strong {
   color: var(--accent);
+}
+
+.summary {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
 .weekNav {

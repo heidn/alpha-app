@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from 'convex/react'
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { api } from '../../../../../convex/_generated/api'
 import type { Id } from '../../../../../convex/_generated/dataModel'
 import { useClassPick } from '../classes/useClassPick.ts'
@@ -116,11 +116,17 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
     if (r.ok) navigate({ name: 'workout', id: r.value })
   }
 
+  // Days the class runs, plus any off-day that still has a workout (e.g. imported).
+  const shown = days.filter(
+    (d) =>
+      classDays.includes(d.getDay()) || workouts?.some((w) => w.date === isoDate(d)),
+  )
+
   return (
     <>
       <ErrorBanner error={error} onDismiss={clearError} />
-      <ol className={styles.week}>
-        {days.map((d) => {
+      <ol className={styles.week} style={{ '--cols': shown.length || 1 } as CSSProperties}>
+        {shown.map((d) => {
           const date = isoDate(d)
           const workout = workouts?.find((w) => w.date === date)
           const scheduled = classDays.includes(d.getDay())
@@ -142,9 +148,14 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
                 <span className={ui.muted}>…</span>
               ) : workout ? (
                 <a className={styles.workout} href={hrefFor({ name: 'workout', id: workout._id })}>
-                  {workout.title}
+                  <strong>{workout.title}</strong>
+                  {workout.summary.map((line, i) => (
+                    <span key={i} className={styles.summary}>
+                      {line}
+                    </span>
+                  ))}
                 </a>
-              ) : scheduled ? (
+              ) : (
                 <button
                   type="button"
                   className={`${ui.btn} ${ui.btnSmall}`}
@@ -153,8 +164,6 @@ function Week({ classId, classDays, days, range, today }: WeekProps) {
                 >
                   + Create
                 </button>
-              ) : (
-                <span className={ui.muted}>No class</span>
               )}
             </li>
           )
