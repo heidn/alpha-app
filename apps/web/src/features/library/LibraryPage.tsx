@@ -5,12 +5,14 @@ import type { Id } from '../../../../../convex/_generated/dataModel'
 import ui from '../ui/ui.module.css'
 import { ItemsPanel } from './ItemsPanel.tsx'
 import { MergeExercise } from './MergeExercise.tsx'
+import { TemplatesPanel } from './TemplatesPanel.tsx'
 import { ScoreTypesPanel } from './ScoreTypesPanel.tsx'
 
-const TABS = ['sections', 'exercises', 'scoreTypes'] as const
+const TABS = ['sections', 'templates', 'exercises', 'scoreTypes'] as const
 type Tab = (typeof TABS)[number]
 const TAB_LABEL: Record<Tab, string> = {
   sections: 'Sections',
+  templates: 'Templates',
   exercises: 'Exercises',
   scoreTypes: 'Score types',
 }
@@ -88,6 +90,7 @@ export function LibraryPage({ isAdmin }: { isAdmin: boolean }) {
         ))}
       </div>
       {tab === 'sections' && <SectionsTab isAdmin={isAdmin} />}
+      {tab === 'templates' && <TemplatesPanel />}
       {tab === 'exercises' && <ExercisesTab isAdmin={isAdmin} />}
       {tab === 'scoreTypes' && <ScoreTypesPanel isAdmin={isAdmin} />}
     </div>

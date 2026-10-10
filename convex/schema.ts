@@ -7,6 +7,7 @@ import {
   recordedMaxV,
   memberSetV,
   sourceV,
+  programSectionV,
   programV,
   releaseV,
   scoreFieldV,
@@ -125,6 +126,14 @@ export default defineSchema({
     title: v.string(),
     description: v.optional(v.string()),
   }).index('by_title', ['title']),
+
+  // Reusable section ("Standard warm-up", "Snatch EMOM 6x"), shared like the rest of the library.
+  // Keys inside `section` are re-generated when it's inserted into a workout.
+  sectionTemplates: defineTable({
+    name: v.string(),
+    section: programSectionV,
+    createdBy: v.id('users'),
+  }).index('by_name', ['name']),
 
   exercises: defineTable({
     name: v.string(),
