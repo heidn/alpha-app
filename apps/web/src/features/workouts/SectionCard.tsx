@@ -17,6 +17,7 @@ type Props = {
   onChange: (s: ProgramSection) => void
   onMove: (delta: -1 | 1) => void
   onRemove: () => void
+  onSaveTemplate: () => void
   onName: (id: string, name: string) => void
   onError: (msg: string) => void
 }
@@ -40,6 +41,14 @@ export function SectionCard(p: Props) {
           <span className={ui.pill}>Display only</span>
         )}
         <div className={styles.tools}>
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnSmall}`}
+            title="Reuse this section on other workouts"
+            onClick={p.onSaveTemplate}
+          >
+            Save as template
+          </button>
           <button
             type="button"
             className={`${ui.btn} ${ui.btnSmall}`}

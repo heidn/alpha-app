@@ -20,6 +20,7 @@ import type * as library from "../library.js";
 import type * as release from "../release.js";
 import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
+import type * as templates from "../templates.js";
 import type * as users from "../users.js";
 import type * as wodify from "../wodify.js";
 import type * as wodifyImport from "../wodifyImport.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   release: typeof release;
   roles: typeof roles;
   seed: typeof seed;
+  templates: typeof templates;
   users: typeof users;
   wodify: typeof wodify;
   wodifyImport: typeof wodifyImport;

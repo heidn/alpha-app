@@ -1,6 +1,6 @@
 # heidnick
-- Task: coach UX backlog (from agent UX review). PR1 `heidnick/coach-ux-quick-wins` (worktree ../alpha-app-coach-ux): Users staff tab/counts, editor save bar + nav guard + remove confirms, week grid scheduled days + summary. Not browser-tested.
-- Next PRs: copy day / copy last week · set grid default cols · nav Program/Library/Setup (Leaderboard → per-day Results link, Home → Program) · drop gym Members tab, skip gym list if 1 · Imports unmatched summary · Library cleanup (importer names, usage, merge/archive) · section templates · Draft/Published week (schema) · paste entry into section notes.
+- Coach UX backlog done as stacked PRs #24 → #25 → #26 → #27 → #28 (merge in order; after each squash merge, rebase the next with `git rebase --onto origin/main <old base>`). None browser-tested yet.
+- Deferred: skip gym list when 1 gym; typed confirm for Remove imported; leaderboard polish (athlete app owns it).
 - Onboarding (#18) not browser-tested.
 
 ## TODO

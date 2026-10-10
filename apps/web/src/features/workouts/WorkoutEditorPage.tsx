@@ -5,6 +5,7 @@ import { api } from '../../../../../convex/_generated/api'
 import type { Program } from '../../../../../convex/domain'
 import { hrefFor, navigate } from '../shell/useRoute.ts'
 import { ErrorBanner } from '../ui/ErrorBanner.tsx'
+import type { ProgramSection } from '../../../../../convex/domain'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
 import { move, newKey, removeAt, replaceAt } from './program.ts'
@@ -32,6 +33,8 @@ export function WorkoutEditorPage({ id }: { id: string }) {
 
 function Editor({ workout }: { workout: Workout }) {
   const sections = useQuery(api.library.listSections)
+  const templates = useQuery(api.templates.list)
+  const saveTemplate = useMutation(api.templates.create)
   const scoreTypes = useQuery(api.library.listScoreTypes)
   const save = useMutation(api.workouts.save)
   const remove = useMutation(api.workouts.remove)
@@ -74,10 +77,24 @@ function Editor({ workout }: { workout: Workout }) {
     }
   }
   const onAddSection = () => {
+    const template = templates?.find((t) => `tpl:${t._id}` === addSection)
     const section = sections?.find((s) => s._id === addSection)
-    if (!section) return
-    setProgram([...draft.program, { key: newKey(), sectionId: section._id, exercises: [] }])
+    if (template) {
+      // Fresh keys: logs are keyed by item key, so a copy must not reuse the template's.
+      const { section: t } = template
+      const exercises = t.exercises.map((e) => ({ ...e, key: newKey() }))
+      setProgram([...draft.program, { ...t, key: newKey(), exercises }])
+      setNames((n) => ({ ...template.exerciseNames, ...n }))
+    } else if (section) {
+      setProgram([...draft.program, { key: newKey(), sectionId: section._id, exercises: [] }])
+    } else return
     setAddSection('')
+  }
+  const onSaveTemplate = async (section: ProgramSection) => {
+    const name = window.prompt('Template name', sectionTitle(section.sectionId))?.trim()
+    if (!name) return
+    // Shows up under "Templates" in the Add a section list right away.
+    await run(() => saveTemplate({ name, section }))
   }
 
   const date = new Date(`${workout.date}T00:00:00`)
@@ -163,6 +180,7 @@ function Editor({ workout }: { workout: Workout }) {
           onChange={(next) => setProgram(replaceAt(draft.program, i, next))}
           onMove={(d) => setProgram(move(draft.program, i, d))}
           onRemove={() => setProgram(removeAt(draft.program, i))}
+          onSaveTemplate={() => void onSaveTemplate(s)}
           onName={(eid, name) => setNames((n) => ({ ...n, [eid]: name }))}
           onError={setError}
         />
@@ -175,11 +193,22 @@ function Editor({ workout }: { workout: Workout }) {
             <option value="">
               {sections?.length ? 'Add a section…' : 'No sections. Add some in Library.'}
             </option>
-            {sections?.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.title}
-              </option>
-            ))}
+            <optgroup label="Sections">
+              {sections?.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.title}
+                </option>
+              ))}
+            </optgroup>
+            {!!templates?.length && (
+              <optgroup label="Templates">
+                {templates.map((t) => (
+                  <option key={t._id} value={`tpl:${t._id}`}>
+                    {t.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
         <button type="button" className={ui.btn} disabled={!addSection} onClick={onAddSection}>
