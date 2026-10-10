@@ -1,0 +1,72 @@
+.from {
+  margin: 0;
+}
+
+.results {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  margin: var(--s-1) 0 0;
+  padding: var(--s-1);
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.results li {
+  font-weight: 400;
+}
+
+.result {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result:hover {
+  background: var(--surface-2);
+}
+
+.result[aria-pressed='true'] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.hint {
+  font-weight: 400;
+}
+
+.amount {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.amount input {
+  width: 8rem;
+}
+
+.amount select {
+  width: auto;
+}
+
+.preview {
+  margin: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.progress {
+  margin-right: auto;
+  align-self: center;
+}
