@@ -14,6 +14,7 @@
 
 ## Domain model (`convex/schema.ts`, validators in `convex/domain.ts`)
 - Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.
+- Class = program: `times` (start times, absent = [startTime]; startTime kept = times[0]) share one workout per day. `release` {day before|same, time} gates athletes (`myDay`/`get`, server clock via `nowFor(asOf)`), gym `timeZone` (default America/Chicago), math in `convex/release.ts`.
 - `workouts` (one per class+date) embed `program`: sections→exercises→prescriptions, order = array order, items have stable client `key`; `score` present = scored item; metcon sections may carry `format` (forTime|amrap|emom|intervals) + `timeCapSec`.
 - `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts` (gym staff = `gymMembers.staff`).
 - Attendance = `bookings` (status signedIn), one per member per date; Wodify import writes one per athlete-day (source wodify), no time slot.

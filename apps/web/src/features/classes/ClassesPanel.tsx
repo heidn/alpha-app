@@ -7,7 +7,7 @@ import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
 import { ClassForm, type ClassValues } from './ClassForm.tsx'
-import { formatDays } from './days.ts'
+import { formatDays, formatTimes } from './days.ts'
 
 export function ClassesPanel({ gymId }: { gymId: Id<'gyms'> }) {
   const classes = useQuery(api.classes.listByGym, { gymId })
@@ -59,7 +59,7 @@ export function ClassesPanel({ gymId }: { gymId: Id<'gyms'> }) {
                   <td>
                     <a href={hrefFor({ name: 'class', id: c._id })}>{c.name}</a>
                     <div className={ui.muted}>
-                      {c.startTime}
+                      {formatTimes(c.times)}
                       {c.durationMin ? ` · ${c.durationMin} min` : ''}
                     </div>
                   </td>

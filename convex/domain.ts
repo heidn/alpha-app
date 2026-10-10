@@ -18,6 +18,13 @@ export const scoreFieldV = v.union(
 )
 export const sortV = v.union(v.literal('asc'), v.literal('desc'))
 
+// When athletes see a class's workouts: the day before or the day of, at `time` (gym local).
+export const releaseV = v.object({
+  day: v.union(v.literal('before'), v.literal('same')),
+  time: v.string(), // "20:00"
+})
+export type Release = Infer<typeof releaseV>
+
 export const bookingStatusV = v.union(v.literal('booked'), v.literal('signedIn'))
 
 // A 1RM the app can't derive from logged sets: a coach-run test or one carried over from the old app.

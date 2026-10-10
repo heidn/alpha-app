@@ -1,7 +1,17 @@
 import { useState, type FormEvent } from 'react'
 import ui from '../ui/ui.module.css'
 
-export type GymValues = { name: string; address: string; isOnline: boolean }
+export type GymValues = { name: string; address: string; isOnline: boolean; timeZone: string }
+
+const US_ZONES = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Phoenix',
+  'America/Los_Angeles',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+]
 
 type Props = {
   initial?: GymValues
@@ -12,9 +22,14 @@ type Props = {
 }
 
 export function GymForm({ initial, pending, submitLabel, onSubmit, onCancel }: Props) {
-  const [values, setValues] = useState<GymValues>(
-    initial ?? { name: '', address: '', isOnline: false },
-  )
+  // Copy only the form's fields: `initial` may be a whole gym (with _id).
+  const [values, setValues] = useState<GymValues>({
+    name: initial?.name ?? '',
+    address: initial?.address ?? '',
+    isOnline: initial?.isOnline ?? false,
+    timeZone: initial?.timeZone ?? 'America/Chicago',
+  })
+  const zones = US_ZONES.includes(values.timeZone) ? US_ZONES : [...US_ZONES, values.timeZone]
   const submit = (e: FormEvent) => {
     e.preventDefault()
     onSubmit(values)
@@ -38,6 +53,19 @@ export function GymForm({ initial, pending, submitLabel, onSubmit, onCancel }: P
           />
         </label>
       </div>
+      <label className={ui.field}>
+        Time zone (used for workout release times)
+        <select
+          value={values.timeZone}
+          onChange={(e) => setValues({ ...values, timeZone: e.target.value })}
+        >
+          {zones.map((z) => (
+            <option key={z} value={z}>
+              {z.replace('_', ' ')}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className={ui.check}>
         <input
           type="checkbox"
