@@ -51,6 +51,7 @@ function ImportCard() {
   const upsertVisits = useMutation(api.wodifyImport.upsertVisits)
   const removeImported = useMutation(api.wodifyImport.removeImported)
   const removeImportedVisits = useMutation(api.wodifyImport.removeImportedVisits)
+  const linkMovementTests = useMutation(api.library.linkMovementTests)
 
   const onPick = async (f: File | undefined) => {
     clearError()
@@ -171,6 +172,30 @@ function ImportCard() {
       )
   }
 
+  // All classes: "2k Row" / "1-Mile Run" metcons → Row · 2,000 m tests, logs get movement + variant.
+  const onLink = async () => {
+    setNotice(null)
+    const r = await run(async () => {
+      let cursor: string | null = null
+      const linked = { sections: 0, logs: 0 }
+      for (;;) {
+        setProgress({ label: 'Linking movement tests', done: linked.logs, total: 0 })
+        const res: Awaited<ReturnType<typeof linkMovementTests>> = await linkMovementTests({
+          cursor,
+        })
+        linked.sections += res.sections
+        linked.logs += res.logs
+        if (res.done) return linked
+        cursor = res.cursor
+      }
+    })
+    setProgress(null)
+    if (r.ok)
+      setNotice(
+        `Linked ${r.value.sections} movement tests and ${r.value.logs} results to their movement history.`,
+      )
+  }
+
   const p = file?.parsed
   const disabledWhy = !file ? 'Choose a file first' : !classId ? 'Choose the class first' : undefined
   return (
@@ -239,6 +264,15 @@ function ImportCard() {
             onClick={() => void onRemove()}
           >
             Remove imported data
+          </button>
+          <button
+            type="button"
+            className={ui.btn}
+            disabled={pending}
+            title="Turn “2k Row”, “1-Mile Run”… into Row · 2,000 m tests so results show in movement history (all classes)"
+            onClick={() => void onLink()}
+          >
+            Link movement tests
           </button>
           <button
             type="button"

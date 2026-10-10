@@ -6,6 +6,7 @@ import { useStoreUser } from '../auth/useStoreUser.ts'
 import { ClassPage } from '../classes/ClassPage.tsx'
 import { GymPage } from '../gyms/GymPage.tsx'
 import { GymsPage } from '../gyms/GymsPage.tsx'
+import { HistoryPage } from '../history/HistoryPage.tsx'
 import { HomePage } from '../home/HomePage.tsx'
 import { WodifyImportPage } from '../imports/WodifyImportPage.tsx'
 import { LeaderboardPage } from '../leaderboard/LeaderboardPage.tsx'
@@ -29,6 +30,7 @@ const SECTION: Record<Route['name'], Route['name']> = {
   workout: 'workouts',
   imports: 'gyms',
   leaderboard: 'workouts',
+  history: 'workouts',
 }
 
 export function AppShell() {
@@ -104,6 +106,8 @@ export function AppShell() {
           <WorkoutEditorPage id={route.id} />
         ) : route.name === 'leaderboard' ? (
           <LeaderboardPage date={route.date} />
+        ) : route.name === 'history' ? (
+          <HistoryPage key={`${route.userId}/${route.exerciseId}`} {...route} />
         ) : route.name === 'imports' ? (
           <WodifyImportPage />
         ) : null}

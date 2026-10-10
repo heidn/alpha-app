@@ -158,7 +158,7 @@ function ranks(item: Item) {
 
 function Board({ item }: { item: Item }) {
   const place = ranks(item)
-  const showRx = item.kind === 'section'
+  const showRx = item.hasRx
   return (
     <section className={ui.card}>
       <div className={ui.cardHead}>
@@ -191,7 +191,20 @@ function Board({ item }: { item: Item }) {
                     <td>
                       <span className={styles.athlete}>
                         <Avatar name={e.name} imageUrl={e.imageUrl} size={28} />
-                        {e.name}
+                        {item.exerciseId ? (
+                          <a
+                            href={hrefFor({
+                              name: 'history',
+                              userId: e.userId,
+                              exerciseId: item.exerciseId,
+                            })}
+                            title={`${e.name}'s ${item.title} history`}
+                          >
+                            {e.name}
+                          </a>
+                        ) : (
+                          e.name
+                        )}
                         {!e.signedUp && <span className={ui.pill}>Not signed up</span>}
                       </span>
                     </td>

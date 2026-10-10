@@ -26,6 +26,7 @@ type Item = {
   title: string
   kind: 'section' | 'lift'
   scoreTypeId: Id<'scoreTypes'>
+  exerciseId?: Id<'exercises'>
 }
 
 function scoredItems(workout: Doc<'workouts'>, exerciseNames: Map<Id<'exercises'>, string>): Item[] {
@@ -33,7 +34,16 @@ function scoredItems(workout: Doc<'workouts'>, exerciseNames: Map<Id<'exercises'
     ...(s.score ? [{ key: s.key, title: s.score.title, kind: 'section' as const, scoreTypeId: s.score.scoreTypeId }] : []),
     ...s.exercises.flatMap((e) =>
       e.score
-        ? [{ key: e.key, title: exerciseNames.get(e.exerciseId) ?? e.score.title, kind: 'lift' as const, scoreTypeId: e.score.scoreTypeId }]
+        ? [
+            {
+              key: e.key,
+              // Test options carry their variant in the title ("2,000 m Row").
+              title: (s.kind !== 'test' && exerciseNames.get(e.exerciseId)) || e.score.title,
+              kind: 'lift' as const,
+              scoreTypeId: e.score.scoreTypeId,
+              exerciseId: e.exerciseId,
+            },
+          ]
         : [],
     ),
   ])
@@ -97,6 +107,7 @@ export const day = query({
             const u = users.get(l.userId)!
             return {
               logId: l._id,
+              userId: l.userId,
               name: u.name,
               signedUp: !!u.tokenIdentifier,
               imageUrl: u.imageUrl,
@@ -106,17 +117,20 @@ export const day = query({
               sets: l.sets,
             }
           })
-          .sort((a, b) => {
-            // Rx above scaled (metcons only: lifts have no Rx), then the score, unscored last.
-            if (it.kind === 'section' && !!a.isRx !== !!b.isRx) return a.isRx ? -1 : 1
-            if (a.sortValue === undefined || b.sortValue === undefined)
-              return a.sortValue === undefined ? (b.sortValue === undefined ? 0 : 1) : -1
-            return sort === 'asc' ? a.sortValue - b.sortValue : b.sortValue - a.sortValue
-          })
+        // Rx above scaled where Rx applies (metcons, tests; lifts have none).
+        const hasRx = it.kind === 'section' || entries.some((e) => e.isRx !== undefined)
+        entries.sort((a, b) => {
+          if (hasRx && !!a.isRx !== !!b.isRx) return a.isRx ? -1 : 1
+          if (a.sortValue === undefined || b.sortValue === undefined)
+            return a.sortValue === undefined ? (b.sortValue === undefined ? 0 : 1) : -1
+          return sort === 'asc' ? a.sortValue - b.sortValue : b.sortValue - a.sortValue
+        })
         return {
           key: it.key,
           title: it.title,
           kind: it.kind,
+          exerciseId: it.exerciseId ?? null,
+          hasRx,
           scoreType: type ? { name: type.name, fields: type.fields, perSet: type.perSet } : null,
           truncated: logsByItem[i].length === MAX_ENTRIES,
           entries,

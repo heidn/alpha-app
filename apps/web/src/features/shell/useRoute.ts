@@ -11,6 +11,7 @@ export type Route =
   | { name: 'workout'; id: string }
   | { name: 'imports' }
   | { name: 'leaderboard'; date?: string }
+  | { name: 'history'; userId: string; exerciseId: string }
 
 const subscribe = (cb: () => void) => {
   window.addEventListener('hashchange', cb)
@@ -18,13 +19,14 @@ const subscribe = (cb: () => void) => {
 }
 
 const parse = (hash: string): Route => {
-  const [a, b] = hash.replace(/^#\/?/, '').split('/')
+  const [a, b, c] = hash.replace(/^#\/?/, '').split('/')
   if (a === 'admin') return { name: 'admin' }
   if (a === 'library') return { name: 'library' }
   if (a === 'gyms') return b ? { name: 'gym', id: b } : { name: 'gyms' }
   if (a === 'classes' && b) return { name: 'class', id: b }
   if (a === 'imports') return { name: 'imports' }
   if (a === 'leaderboard') return { name: 'leaderboard', date: b || undefined }
+  if (a === 'history' && b && c) return { name: 'history', userId: b, exerciseId: c }
   if (a === 'workouts') return b ? { name: 'workout', id: b } : { name: 'workouts' }
   return { name: 'home' }
 }
@@ -41,6 +43,8 @@ export const hrefFor = (route: Route): string => {
       return `#/workouts/${route.id}`
     case 'leaderboard':
       return route.date ? `#/leaderboard/${route.date}` : '#/leaderboard'
+    case 'history':
+      return `#/history/${route.userId}/${route.exerciseId}`
     default:
       return `#/${route.name}`
   }

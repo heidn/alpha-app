@@ -22,6 +22,7 @@ import {
   WARMUP_KEY,
   type ScoreTypeName,
 } from './wodify'
+import { movementTest, toPrescription, variantOf, type Fixed } from './variants'
 
 // Wodify performance results -> users, workouts, memberLogs, bookings (attendance). Admin-only.
 // The client sends a file in small chunks; every call is an idempotent upsert, so a whole file
@@ -50,9 +51,9 @@ const exerciseByName = (ctx: MutationCtx, name: string) =>
 // A program item by key: a section, or an exercise inside one.
 function findItem(program: ProgramSection[], key: string) {
   for (const s of program) {
-    if (s.key === key) return { score: s.score, exerciseId: undefined }
+    if (s.key === key) return { score: s.score, exerciseId: undefined, variant: undefined }
     const e = s.exercises.find((x) => x.key === key)
-    if (e) return { score: e.score, exerciseId: e.exerciseId }
+    if (e) return { score: e.score, exerciseId: e.exerciseId, variant: variantOf(s, e) }
   }
   return undefined
 }
@@ -175,6 +176,34 @@ const sectionFor = (
   }
 }
 
+// "2k Row" scored as a whole → a one-option test (Row · 2000 m). The option keeps the section's key,
+// so results already logged against it still match; the section gets a derived key.
+export function testSection(
+  s: ProgramSection,
+  exerciseId: Id<'exercises'>,
+  fixed: Fixed,
+): ProgramSection {
+  return {
+    key: `${s.key}:test`,
+    sectionId: s.sectionId,
+    kind: 'test',
+    notes: s.notes,
+    exercises: [
+      {
+        key: s.key,
+        exerciseId,
+        prescriptions: [toPrescription(fixed)],
+        score: s.score,
+      },
+    ],
+  }
+}
+
+// Library movement for a test, created on first use.
+export async function movementId(ctx: MutationCtx, name: string) {
+  return (await exerciseByName(ctx, name))?._id ?? (await ctx.db.insert('exercises', { name }))
+}
+
 // One workout per class + date. Imported days are rebuilt from the file; coach-made days only
 // gain the components they're missing. A day's lifts form one Strength section, kept first.
 export const upsertWorkouts = mutation({
@@ -238,7 +267,13 @@ export const upsertWorkouts = mutation({
             score,
             prescriptions: parseRepScheme(c.repScheme ?? '').slice(0, 20),
           })
-        } else sections.push(sectionFor(itemKey(c.name), metcon._id, c, score.scoreTypeId))
+        } else {
+          const test = movementTest(c.name)
+          const section = sectionFor(itemKey(c.name), metcon._id, c, score.scoreTypeId)
+          sections.push(
+            test ? testSection(section, await movementId(ctx, test.movement), test.fixed) : section,
+          )
+        }
       }
       if (lifts.length) sections.push({ key: STRENGTH_KEY, sectionId: strength._id, exercises: lifts })
       sections.sort((a, b) => sectionRank(a.key) - sectionRank(b.key))
@@ -260,13 +295,16 @@ export const upsertWorkouts = mutation({
         continue
       }
       const incoming = new Map(sections.map((s) => [s.key, s]))
+      // An older import's whole-section "2k Row" is replaced by its test section (same item key).
+      const optionKeys = new Set(sections.flatMap((s) => s.exercises.map((e) => e.key)))
+      const kept = existing.program.filter((s) => !optionKeys.has(s.key) || incoming.has(s.key))
       const program =
         existing.source === 'wodify'
           ? [
-              ...existing.program.map((s) => incoming.get(s.key) ?? s),
-              ...sections.filter((s) => !existing.program.some((e) => e.key === s.key)),
+              ...kept.map((s) => incoming.get(s.key) ?? s),
+              ...sections.filter((s) => !kept.some((e) => e.key === s.key)),
             ]
-          : [...existing.program, ...sections.filter((s) => !existing.program.some((e) => e.key === s.key))]
+          : [...kept, ...sections.filter((s) => !kept.some((e) => e.key === s.key))]
       program.sort((a, b) => sectionRank(a.key) - sectionRank(b.key))
       if (program.length > MAX.sections) throw new ConvexError(`Too many components on ${day.date}`)
       if (!sameData(program, existing.program)) {
@@ -319,8 +357,10 @@ export const upsertLogs = mutation({
       const fields = {
         scoreTypeId: item.score.scoreTypeId,
         exerciseId: item.exerciseId,
+        variant: item.variant,
         unit,
-        isRx: item.exerciseId ? undefined : l.isRx, // Wodify's Rx flag means nothing on lifts
+        // Wodify's Rx flag means nothing on lifts; tests (Row · 2,000 m) keep it.
+        isRx: item.exerciseId && !item.variant ? undefined : l.isRx,
         notes: l.notes?.trim().slice(0, 2000) || undefined,
         sortValue: sortMetric(sets),
         sets,
