@@ -10,7 +10,7 @@
 - Roles: `users.role` optional `admin|coach|athlete` (absent = athlete, via `roleOf`); defs in `convex/roles.ts` (no server imports, client-safe). Admin UI `apps/web/src/features/admin/`; first admin via `npx convex run admin:grantAdmin`. Admin invites (`convex/invites.ts`): role held in `userInvites`, claimed in `users.store` if email verified.
 - Frontend features: `apps/web/src/features/<feature>/`. UI conventions: `.claude/skills/react-ux` skill (load before UI work).
 - Routing: tiny hash router `apps/web/src/features/shell/useRoute.ts` (no dep). Styling: tokens in `apps/web/src/index.css` + colocated CSS Modules.
-- Shell: `App` -> LoginPage (unauth) | AppShell (nav + UserButton, routes home/admin). AppShell shows OnboardingPage (first/last name + gender, `users.completeProfile`) until `users.gender` set.
+- Shell: `App` -> LoginPage (unauth) | AppShell. Staff nav = Program (`#/workouts`, also `#/`) / Library / Setup (`SetupNav`: gyms+classes, Users `#/admin`, Imports); athletes get HomePage. Leaderboard via per-day Results link `#/leaderboard/<date>`. AppShell shows OnboardingPage (first/last name + gender, `users.completeProfile`) until `users.gender` set.
 
 ## Domain model (`convex/schema.ts`, validators in `convex/domain.ts`)
 - Member = `users`. Gym staff via `gymMembers`; athletes join a class once (`classMembers`, `classInvites` claimed by email in `users.store`) and see its daily workout.
@@ -18,7 +18,7 @@
 - `memberLogs` separate (hot writes), sets embedded, keyed by `workoutId+itemKey`; `exerciseId` copied for history. Auth helpers `convex/access.ts` (gym staff = `gymMembers.staff`).
 - Attendance = `bookings` (status signedIn), one per member per date; Wodify import writes one per athlete-day (source wodify), no time slot.
 - Wodify import (`convex/wodifyImport.ts`, `#/imports`, admin): performance-results JSON parsed in browser → chunked idempotent upserts (athletes → workouts → memberLogs); imported rows have `source: 'wodify'`, item key `wodify:<norm(component)>`; metcon = section-level score, notes = stripped HTML description; lifts (Component Type Weightlifting) = exercises in one `wodify-strength` section (first), prescriptions from Rep Scheme, logs carry `exerciseId`. Warmups (not in any export) come from the coach app via Claude in Chrome as `wodify_warmups_*.json` → display-only `wodify-warmup` section; day order warmup → strength → rest. Compare docs with `sameData` (Convex sorts keys).
-- Client: routes `#/gyms[/:id]`, `#/classes/:id`, `#/library`, `#/workouts[/:id]`, `#/imports`, `#/leaderboard`; shared `apps/web/src/features/ui/` (ui.module.css, ErrorBanner, useRun); gym/class pick `features/classes/useClassPick`.
+- Client: routes `#/gyms[/:id]`, `#/classes/:id`, `#/library`, `#/workouts[/:id]`, `#/imports`, `#/leaderboard[/:date]`; shared `apps/web/src/features/ui/` (ui.module.css, ErrorBanner, useRun); gym/class pick `features/classes/useClassPick`.
 - Leaderboard (`convex/leaderboard.ts`, staff): per class day, Rx first then sortValue by score type `sort`; unclaimed members flagged `signedUp: false` (web only).
 
 ## Conventions
