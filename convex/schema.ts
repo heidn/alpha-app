@@ -138,6 +138,9 @@ export default defineSchema({
   exercises: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
+    // Complex ("Clean Pull + Clean") → its lifts in order; set from the name (convex/complexes.ts).
+    // The complex keeps its own history; parts show it under "In complexes".
+    parts: v.optional(v.array(v.id('exercises'))),
   })
     .index('by_name', ['name'])
     .searchIndex('search_name', { searchField: 'name' }),
