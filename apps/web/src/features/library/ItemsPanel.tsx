@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { ErrorBanner } from '../ui/ErrorBanner.tsx'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
@@ -13,6 +13,7 @@ type Props<I extends string> = {
   search?: { value: string; onChange: (v: string) => void }
   onCreate: (values: Values) => Promise<unknown>
   onUpdate: (id: I, values: Values) => Promise<unknown>
+  actions?: (item: Item<I>) => ReactNode // extra row buttons (shown with Edit)
 }
 
 function ItemForm(props: {
@@ -61,6 +62,7 @@ export function ItemsPanel<I extends string>({
   search,
   onCreate,
   onUpdate,
+  actions,
 }: Props<I>) {
   const { run, pending, error, clearError } = useRun()
   const [editing, setEditing] = useState<I | null>(null)
@@ -125,6 +127,7 @@ export function ItemsPanel<I extends string>({
                       {item.description && <div className={ui.muted}>{item.description}</div>}
                     </td>
                     <td className={ui.actions}>
+                      {canEdit && actions?.(item)}
                       {canEdit && (
                         <button
                           type="button"

@@ -1,8 +1,10 @@
 import { useMutation, useQuery } from 'convex/react'
 import { useDeferredValue, useState } from 'react'
 import { api } from '../../../../../convex/_generated/api'
+import type { Id } from '../../../../../convex/_generated/dataModel'
 import ui from '../ui/ui.module.css'
 import { ItemsPanel } from './ItemsPanel.tsx'
+import { MergeExercise } from './MergeExercise.tsx'
 import { ScoreTypesPanel } from './ScoreTypesPanel.tsx'
 
 const TABS = ['sections', 'exercises', 'scoreTypes'] as const
@@ -34,15 +36,30 @@ function ExercisesTab({ isAdmin }: { isAdmin: boolean }) {
   const exercises = useQuery(api.library.listExercises, term ? { search: term } : {})
   const create = useMutation(api.library.createExercise)
   const update = useMutation(api.library.updateExercise)
+  const [merging, setMerging] = useState<{ _id: Id<'exercises'>; name: string } | null>(null)
   return (
-    <ItemsPanel
-      noun="exercise"
-      items={exercises}
-      canEdit={isAdmin}
-      search={{ value: search, onChange: setSearch }}
-      onCreate={(v) => create(v)}
-      onUpdate={(id, v) => update({ exerciseId: id, ...v })}
-    />
+    <>
+      {merging && (
+        <MergeExercise key={merging._id} from={merging} onDone={() => setMerging(null)} />
+      )}
+      <ItemsPanel
+        noun="exercise"
+        items={exercises}
+        canEdit={isAdmin}
+        search={{ value: search, onChange: setSearch }}
+        onCreate={(v) => create(v)}
+        onUpdate={(id, v) => update({ exerciseId: id, ...v })}
+        actions={(item) => (
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnSmall}`}
+            onClick={() => setMerging(item)}
+          >
+            Merge…
+          </button>
+        )}
+      />
+    </>
   )
 }
 

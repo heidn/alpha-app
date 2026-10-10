@@ -120,6 +120,10 @@
   white-space: nowrap;
 }
 
+.actions > * + * {
+  margin-left: var(--s-1);
+}
+
 .empty {
   margin: 0;
   padding: var(--s-6) var(--s-4);
