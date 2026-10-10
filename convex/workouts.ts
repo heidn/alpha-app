@@ -273,8 +273,14 @@ async function validateProgram(ctx: QueryCtx, workout: Doc<'workouts'>, program:
   const nonNegative = (n: number | undefined) => n === undefined || (Number.isFinite(n) && n >= 0)
   for (const s of program) {
     claimKey(s.key)
+    const exerciseScored = s.exercises.some((e) => e.score)
     if (s.kind === 'test' && (s.score || s.exercises.some((e) => !e.score)))
       throw new ConvexError('Each option of a test is scored on its own')
+    if (s.kind === 'metcon' && exerciseScored)
+      throw new ConvexError('A metcon is scored as a whole, not per exercise')
+    if (s.kind === 'strength' && s.score) throw new ConvexError('Strength is scored per exercise')
+    if (s.kind === 'notes' && (s.score || exerciseScored))
+      throw new ConvexError('A notes section is not scored')
     if (s.exercises.length > LIMITS.exercises)
       throw new ConvexError('Too many exercises in a section')
     for (const e of s.exercises) {

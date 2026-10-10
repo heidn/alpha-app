@@ -2,11 +2,12 @@ import type { ProgramSection } from '../../../../../convex/domain'
 import ui from '../ui/ui.module.css'
 import { ExercisePicker } from './ExercisePicker.tsx'
 import { MetconFormat } from './MetconFormat.tsx'
+import { MetconScoring } from './MetconScoring.tsx'
 import { PrescriptionTable } from './PrescriptionTable.tsx'
 import { emptyPrescription, move, newKey, removeAt, replaceAt, scoreTypeFor } from './program.ts'
 import { ScoreControl, type ScoreTypeOption } from './ScoreControl.tsx'
+import { isKind, KINDS, strengthResults, toKind, withCurrent } from './sectionKind.ts'
 import { TestOptions } from './TestOptions.tsx'
-import { fixedOf, optionScore } from './testOption.ts'
 import styles from './WorkoutEditor.module.css'
 
 type Props = {
@@ -31,25 +32,15 @@ const exerciseScoreType = (s: ProgramSection, e: ProgramSection['exercises'][num
     ? 'For Time'
     : 'Weight per set'
 
-// Standard ⇄ pick-one test. A test scores each option, never the section.
-function withKind(s: ProgramSection, test: boolean, p: Props): ProgramSection {
-  if (!test) return { ...s, kind: undefined }
-  const exercises = s.exercises.map((e) => ({
-    ...e,
-    score: p.logged.has(e.key)
-      ? e.score
-      : optionScore(p.scoreTypes, fixedOf(e.prescriptions[0]), p.names[e.exerciseId] ?? '', e.score),
-  }))
-  return { ...s, kind: 'test', score: undefined, format: undefined, timeCapSec: undefined, exercises }
-}
-
 const hasLogs = (s: ProgramSection, logged: Set<string>) =>
   logged.has(s.key) || s.exercises.some((e) => logged.has(e.key))
 
 export function SectionCard(p: Props) {
   const { section: s, logged } = p
-  const isTest = s.kind === 'test'
+  const kind = s.kind
   const scored = !!s.score || s.exercises.some((e) => e.score)
+  const locked = hasLogs(s, logged)
+  const lifts = strengthResults(p.scoreTypes)
   const setExercises = (exercises: ProgramSection['exercises']) => p.onChange({ ...s, exercises })
   const lockedTitle = 'Members have logged results here'
 
@@ -61,16 +52,24 @@ export function SectionCard(p: Props) {
           <span className="visually-hidden">Section type</span>
           <select
             className={ui.input}
-            value={isTest ? 'test' : ''}
-            disabled={logged.has(s.key)}
-            title={logged.has(s.key) ? lockedTitle : undefined}
-            onChange={(e) => p.onChange(withKind(s, e.target.value === 'test', p))}
+            value={kind ?? ''}
+            disabled={locked}
+            title={locked ? lockedTitle : undefined}
+            onChange={(e) => {
+              const next = isKind(e.target.value) ? e.target.value : undefined
+              const ctx = { types: p.scoreTypes, names: p.names, title: p.title }
+              p.onChange(toKind(s, next, ctx))
+            }}
           >
-            <option value="">Standard</option>
-            <option value="test">Pick-one test</option>
+            {KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+            {!kind && <option value="">Standard (custom scoring)</option>}
           </select>
         </label>
-        {isTest ? (
+        {kind === 'test' ? (
           <span className={`${ui.pill} ${styles.scoredPill}`}>Each option scored</span>
         ) : scored ? (
           <span className={`${ui.pill} ${styles.scoredPill}`}>Scored</span>
@@ -107,8 +106,8 @@ export function SectionCard(p: Props) {
           <button
             type="button"
             className={`${ui.btnDanger} ${ui.btnSmall}`}
-            disabled={hasLogs(s, logged)}
-            title={hasLogs(s, logged) ? lockedTitle : undefined}
+            disabled={locked}
+            title={locked ? lockedTitle : undefined}
             onClick={() => {
               const empty = !s.notes && s.exercises.length === 0 && !s.score
               if (empty || window.confirm(`Remove ${p.title}?`)) p.onRemove()
@@ -129,7 +128,7 @@ export function SectionCard(p: Props) {
         />
       </label>
 
-      {isTest ? (
+      {kind === 'test' ? (
         <TestOptions
           section={s}
           names={p.names}
@@ -141,93 +140,139 @@ export function SectionCard(p: Props) {
         />
       ) : (
         <>
-      <ScoreControl
-        score={s.score}
-        scoreTypes={p.scoreTypes}
-        defaultTitle={p.title}
-        defaultType={scoreTypeFor(s.format)}
-        locked={logged.has(s.key)}
-        onChange={(score) => p.onChange({ ...s, score })}
-      />
-
-      {(scored || s.format) && (
-        <MetconFormat
-          section={s}
-          scoreTypes={p.scoreTypes}
-          locked={logged.has(s.key)}
-          onChange={p.onChange}
-        />
-      )}
-
-      <ol className={styles.exercises}>
-        {s.exercises.map((e, i) => {
-          const name = p.names[e.exerciseId] ?? 'Exercise'
-          return (
-            <li key={e.key} className={styles.exercise}>
-              <div className={styles.sectionHead}>
-                <strong>{name}</strong>
-                <div className={styles.tools}>
-                  <button
-                    type="button"
-                    className={`${ui.btn} ${ui.btnSmall}`}
-                    aria-label={`Move ${name} up`}
-                    disabled={i === 0}
-                    onClick={() => setExercises(move(s.exercises, i, -1))}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className={`${ui.btn} ${ui.btnSmall}`}
-                    aria-label={`Move ${name} down`}
-                    disabled={i === s.exercises.length - 1}
-                    onClick={() => setExercises(move(s.exercises, i, 1))}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className={`${ui.btnDanger} ${ui.btnSmall}`}
-                    aria-label={`Remove ${name}`}
-                    disabled={logged.has(e.key)}
-                    title={logged.has(e.key) ? lockedTitle : undefined}
-                    onClick={() => {
-                      if (window.confirm(`Remove ${name}?`)) setExercises(removeAt(s.exercises, i))
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-              <PrescriptionTable
-                rows={e.prescriptions}
-                onChange={(prescriptions) =>
-                  setExercises(replaceAt(s.exercises, i, { ...e, prescriptions }))
-                }
-              />
+          {kind === 'metcon' && (
+            <MetconScoring
+              section={s}
+              title={p.title}
+              scoreTypes={p.scoreTypes}
+              locked={logged.has(s.key)}
+              onChange={p.onChange}
+            />
+          )}
+          {!kind && (
+            <>
               <ScoreControl
-                score={e.score}
+                score={s.score}
                 scoreTypes={p.scoreTypes}
-                defaultTitle={name}
-                defaultType={exerciseScoreType(s, e)}
-                locked={logged.has(e.key)}
-                onChange={(score) => setExercises(replaceAt(s.exercises, i, { ...e, score }))}
+                defaultTitle={p.title}
+                defaultType={scoreTypeFor(s.format)}
+                locked={logged.has(s.key)}
+                onChange={(score) => p.onChange({ ...s, score })}
               />
-            </li>
-          )
-        })}
-      </ol>
+              {(scored || s.format) && (
+                <MetconFormat
+                  section={s}
+                  scoreTypes={p.scoreTypes}
+                  locked={logged.has(s.key)}
+                  onChange={p.onChange}
+                />
+              )}
+            </>
+          )}
 
-      <ExercisePicker
-        onError={p.onError}
-        onPick={(exerciseId, name) => {
-          p.onName(exerciseId, name)
-          setExercises([
-            ...s.exercises,
-            { key: newKey(), exerciseId, prescriptions: [emptyPrescription()] },
-          ])
-        }}
-      />
+          <ol className={styles.exercises}>
+            {s.exercises.map((e, i) => {
+              const name = p.names[e.exerciseId] ?? 'Exercise'
+              return (
+                <li key={e.key} className={styles.exercise}>
+                  <div className={styles.sectionHead}>
+                    <strong>{name}</strong>
+                    <div className={styles.tools}>
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnSmall}`}
+                        aria-label={`Move ${name} up`}
+                        disabled={i === 0}
+                        onClick={() => setExercises(move(s.exercises, i, -1))}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnSmall}`}
+                        aria-label={`Move ${name} down`}
+                        disabled={i === s.exercises.length - 1}
+                        onClick={() => setExercises(move(s.exercises, i, 1))}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={`${ui.btnDanger} ${ui.btnSmall}`}
+                        aria-label={`Remove ${name}`}
+                        disabled={logged.has(e.key)}
+                        title={logged.has(e.key) ? lockedTitle : undefined}
+                        onClick={() => {
+                          if (window.confirm(`Remove ${name}?`))
+                            setExercises(removeAt(s.exercises, i))
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  <PrescriptionTable
+                    rows={e.prescriptions}
+                    onChange={(prescriptions) =>
+                      setExercises(replaceAt(s.exercises, i, { ...e, prescriptions }))
+                    }
+                  />
+                  {kind === 'strength' && (
+                    <label
+                      className={styles.cap}
+                      title={logged.has(e.key) ? lockedTitle : undefined}
+                    >
+                      Log
+                      <select
+                        className={ui.input}
+                        value={e.score?.scoreTypeId ?? ''}
+                        disabled={logged.has(e.key)}
+                        onChange={(ev) => {
+                          const t = withCurrent(lifts, p.scoreTypes, e.score?.scoreTypeId).find(
+                            (x) => x._id === ev.target.value,
+                          )
+                          const score = t && { scoreTypeId: t._id, title: e.score?.title ?? name }
+                          setExercises(replaceAt(s.exercises, i, { ...e, score }))
+                        }}
+                      >
+                        {withCurrent(lifts, p.scoreTypes, e.score?.scoreTypeId).map((t) => (
+                          <option key={t._id} value={t._id}>
+                            {t.name}
+                          </option>
+                        ))}
+                        <option value="">Not logged</option>
+                      </select>
+                    </label>
+                  )}
+                  {!kind && (
+                    <ScoreControl
+                      score={e.score}
+                      scoreTypes={p.scoreTypes}
+                      defaultTitle={name}
+                      defaultType={exerciseScoreType(s, e)}
+                      locked={logged.has(e.key)}
+                      onChange={(score) => setExercises(replaceAt(s.exercises, i, { ...e, score }))}
+                    />
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+
+          <ExercisePicker
+            onError={p.onError}
+            onPick={(exerciseId, name) => {
+              p.onName(exerciseId, name)
+              const score =
+                kind === 'strength' && lifts[0]
+                  ? { scoreTypeId: lifts[0]._id, title: name }
+                  : undefined
+              setExercises([
+                ...s.exercises,
+                { key: newKey(), exerciseId, prescriptions: [emptyPrescription()], score },
+              ])
+            }}
+          />
         </>
       )}
     </article>

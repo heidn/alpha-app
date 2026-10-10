@@ -9,6 +9,7 @@ import type { ProgramSection } from '../../../../../convex/domain'
 import ui from '../ui/ui.module.css'
 import { useRun } from '../ui/useRun.ts'
 import { move, newKey, removeAt, replaceAt } from './program.ts'
+import { kindForTitle, toKind } from './sectionKind.ts'
 import { SectionCard } from './SectionCard.tsx'
 import styles from './WorkoutEditor.module.css'
 
@@ -86,7 +87,9 @@ function Editor({ workout }: { workout: Workout }) {
       setProgram([...draft.program, { ...t, key: newKey(), exercises }])
       setNames((n) => ({ ...template.exerciseNames, ...n }))
     } else if (section) {
-      setProgram([...draft.program, { key: newKey(), sectionId: section._id, exercises: [] }])
+      const empty = { key: newKey(), sectionId: section._id, exercises: [] }
+      const ctx = { types: scoreTypes ?? [], names, title: section.title }
+      setProgram([...draft.program, toKind(empty, kindForTitle(section.title), ctx)])
     } else return
     setAddSection('')
   }
