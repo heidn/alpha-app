@@ -255,17 +255,47 @@ function ImportCard() {
   )
 }
 
+type Account = { _id: Id<'users'>; name: string; email?: string }
+
+const words = (name: string) => name.toLowerCase().match(/[a-z]+/g) ?? []
+
+// Likely account for an imported athlete: same last name and first initial ("Joe" ~ "Joseph"),
+// or both names in the email ("jlachance1@…" ~ "Joe LaChance").
+function suggest(name: string, accounts: Account[]): Account | undefined {
+  const w = words(name)
+  const first = w[0]
+  const last = w[w.length - 1]
+  if (!first || !last || w.length < 2) return undefined
+  const hits = accounts.filter((a) => {
+    const aw = words(a.name)
+    const local = a.email?.split('@')[0].toLowerCase() ?? ''
+    const byName = aw.length > 1 && aw[aw.length - 1] === last && aw[0]?.[0] === first[0]
+    const byEmail = local.includes(last) && (local.startsWith(first[0]) || local.includes(first))
+    return byName || byEmail
+  })
+  return hits.length === 1 ? hits[0] : undefined
+}
+
 // Athletes whose names didn't match anyone at sign-in: merge them into the right account.
 function UnclaimedCard() {
   const unclaimed = useQuery(api.wodifyImport.unclaimed)
   const users = usePaginatedQuery(api.admin.listUsers, {}, { initialNumItems: 200 })
   const merge = useMutation(api.wodifyImport.mergeImportedUser)
   const [target, setTarget] = useState<Record<string, Id<'users'> | ''>>({})
+  const [showAll, setShowAll] = useState(false)
   const { run, pending, error, clearError } = useRun()
   const signedIn = users.results.filter((u) => u.signedIn)
+  const suggested = new Map(
+    (unclaimed ?? []).flatMap((u) => {
+      const s = suggest(u.name, signedIn)
+      return s ? [[u._id, s] as const] : []
+    }),
+  )
+  const rows = showAll ? (unclaimed ?? []) : (unclaimed ?? []).filter((u) => suggested.has(u._id))
+  const targetFor = (id: Id<'users'>) => target[id] ?? suggested.get(id)?._id ?? ''
 
   const onMerge = async (importedUserId: Id<'users'>) => {
-    const userId = target[importedUserId]
+    const userId = targetFor(importedUserId)
     if (!userId) return
     await run(async () => {
       for (let i = 0; i < 100; i++) {
@@ -281,8 +311,11 @@ function UnclaimedCard() {
         <h2>Not signed in yet</h2>
       </div>
       <p className={ui.muted}>
-        Imported athletes are matched to their account by name when they first sign in. If a name
-        didn’t match, merge the athlete into the right account here.
+        {unclaimed?.length
+          ? `${unclaimed.length} imported athletes haven’t signed in. ` +
+            'They’re linked to their account by name when they do. '
+          : 'Imported athletes are linked to their account by name when they sign in. '}
+        If a name didn’t match, merge the athlete into the right account here.
       </p>
       <ErrorBanner error={error} onDismiss={clearError} />
       {unclaimed === undefined ? (
@@ -291,7 +324,10 @@ function UnclaimedCard() {
         <p className={ui.empty}>Everyone imported has signed in.</p>
       ) : (
         <div className={ui.tableWrap}>
-          <table className={ui.table}>
+          {rows.length === 0 && (
+            <p className={ui.empty}>No likely matches among signed-in accounts.</p>
+          )}
+          <table className={ui.table} hidden={rows.length === 0}>
             <thead>
               <tr>
                 <th>Imported athlete</th>
@@ -302,14 +338,14 @@ function UnclaimedCard() {
               </tr>
             </thead>
             <tbody>
-              {unclaimed.map((u) => (
+              {rows.map((u) => (
                 <tr key={u._id}>
                   <td>{u.name}</td>
                   <td>
                     <label>
                       <span className="visually-hidden">Account for {u.name}</span>
                       <select
-                        value={target[u._id] ?? ''}
+                        value={targetFor(u._id)}
                         onChange={(e) => setTarget({ ...target, [u._id]: e.target.value as Id<'users'> })}
                       >
                         <option value="">Choose an account…</option>
@@ -326,8 +362,8 @@ function UnclaimedCard() {
                     <button
                       type="button"
                       className={ui.btnSmall}
-                      disabled={!target[u._id] || pending}
-                      title={!target[u._id] ? 'Choose an account first' : undefined}
+                      disabled={!targetFor(u._id) || pending}
+                      title={!targetFor(u._id) ? 'Choose an account first' : undefined}
                       onClick={() => void onMerge(u._id)}
                     >
                       Merge
@@ -337,6 +373,9 @@ function UnclaimedCard() {
               ))}
             </tbody>
           </table>
+          <button type="button" className={ui.more} onClick={() => setShowAll(!showAll)}>
+            {showAll ? 'Show likely matches only' : `Show all ${unclaimed.length}`}
+          </button>
         </div>
       )}
     </section>
