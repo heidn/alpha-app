@@ -1,6 +1,7 @@
 import type { Id } from '../../../../../convex/_generated/dataModel'
 import type { ProgramSection } from '../../../../../convex/domain'
 import ui from '../ui/ui.module.css'
+import { typeNamed } from './program.ts'
 import styles from './WorkoutEditor.module.css'
 
 export type Score = NonNullable<ProgramSection['score']>
@@ -10,12 +11,15 @@ type Props = {
   score: Score | undefined
   scoreTypes: ScoreTypeOption[]
   defaultTitle: string
+  // Score type picked when "Scored" is ticked, by name; falls back to the first type.
+  defaultType: string
   locked: boolean
   onChange: (score: Score | undefined) => void
 }
 
 // "Score this" toggle: present = members log a result for this item.
-export function ScoreControl({ score, scoreTypes, defaultTitle, locked, onChange }: Props) {
+export function ScoreControl({ score, scoreTypes, defaultTitle, defaultType, locked, onChange }: Props) {
+  const fallback = typeNamed(scoreTypes, defaultType) ?? scoreTypes[0]
   const lockedTitle = locked ? 'Members have logged results for this item' : undefined
   return (
     <div className={styles.score}>
@@ -26,8 +30,8 @@ export function ScoreControl({ score, scoreTypes, defaultTitle, locked, onChange
           disabled={locked || scoreTypes.length === 0}
           onChange={(e) =>
             onChange(
-              e.target.checked && scoreTypes[0]
-                ? { scoreTypeId: scoreTypes[0]._id, title: defaultTitle }
+              e.target.checked && fallback
+                ? { scoreTypeId: fallback._id, title: defaultTitle }
                 : undefined,
             )
           }

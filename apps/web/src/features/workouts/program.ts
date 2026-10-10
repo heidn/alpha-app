@@ -1,4 +1,4 @@
-import type { Prescription } from '../../../../../convex/domain'
+import type { MetconFormat, Prescription } from '../../../../../convex/domain'
 
 export const newKey = () => crypto.randomUUID()
 
@@ -37,3 +37,18 @@ export function weekDays(base: Date, offset: number): Date[] {
     return d
   })
 }
+
+export const typeNamed = <T extends { name: string }>(types: T[], name: string) =>
+  types.find((t) => t.name.toLowerCase() === name.toLowerCase())
+
+export const FORMATS: { value: MetconFormat; label: string; scoreType: string }[] = [
+  { value: 'forTime', label: 'For Time', scoreType: 'For Time' },
+  { value: 'amrap', label: 'AMRAP', scoreType: 'AMRAP' },
+  { value: 'emom', label: 'EMOM', scoreType: 'Checkmark' },
+  { value: 'intervals', label: 'Intervals', scoreType: 'Each Round' },
+]
+
+export const isFormat = (v: string): v is MetconFormat => FORMATS.some((f) => f.value === v)
+
+export const scoreTypeFor = (format: MetconFormat | undefined) =>
+  FORMATS.find((f) => f.value === format)?.scoreType ?? 'For Time'

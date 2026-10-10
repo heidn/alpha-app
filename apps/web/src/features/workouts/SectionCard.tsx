@@ -1,8 +1,9 @@
 import type { ProgramSection } from '../../../../../convex/domain'
 import ui from '../ui/ui.module.css'
 import { ExercisePicker } from './ExercisePicker.tsx'
+import { MetconFormat } from './MetconFormat.tsx'
 import { PrescriptionTable } from './PrescriptionTable.tsx'
-import { emptyPrescription, move, newKey, removeAt, replaceAt } from './program.ts'
+import { emptyPrescription, move, newKey, removeAt, replaceAt, scoreTypeFor } from './program.ts'
 import { ScoreControl, type ScoreTypeOption } from './ScoreControl.tsx'
 import styles from './WorkoutEditor.module.css'
 
@@ -21,6 +22,12 @@ type Props = {
   onName: (id: string, name: string) => void
   onError: (msg: string) => void
 }
+
+// Distance work (1 mi run, 2k row) and For Time sections are scored on time; lifts on weight.
+const exerciseScoreType = (s: ProgramSection, e: ProgramSection['exercises'][number]) =>
+  s.format === 'forTime' || e.prescriptions.some((r) => r.distance !== undefined || r.distanceUnit)
+    ? 'For Time'
+    : 'Weight per set'
 
 const hasLogs = (s: ProgramSection, logged: Set<string>) =>
   logged.has(s.key) || s.exercises.some((e) => logged.has(e.key))
@@ -96,9 +103,19 @@ export function SectionCard(p: Props) {
         score={s.score}
         scoreTypes={p.scoreTypes}
         defaultTitle={p.title}
+        defaultType={scoreTypeFor(s.format)}
         locked={logged.has(s.key)}
         onChange={(score) => p.onChange({ ...s, score })}
       />
+
+      {(scored || s.format) && (
+        <MetconFormat
+          section={s}
+          scoreTypes={p.scoreTypes}
+          locked={logged.has(s.key)}
+          onChange={p.onChange}
+        />
+      )}
 
       <ol className={styles.exercises}>
         {s.exercises.map((e, i) => {
@@ -150,6 +167,7 @@ export function SectionCard(p: Props) {
                 score={e.score}
                 scoreTypes={p.scoreTypes}
                 defaultTitle={name}
+                defaultType={exerciseScoreType(s, e)}
                 locked={logged.has(e.key)}
                 onChange={(score) => setExercises(replaceAt(s.exercises, i, { ...e, score }))}
               />
